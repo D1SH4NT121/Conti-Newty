@@ -17,4 +17,7 @@ tests/scratch/
 .superpowers/
 .impeccable/
 walkthrough.md
+.originkit/
+apps/web/node_modules/
+apps/web/dist/
 

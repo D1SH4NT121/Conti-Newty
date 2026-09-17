@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+<html class="scroll-smooth" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Conti-Newty Workbench — The Multiplayer Company Brain &amp; Knowledge OS</title>
+  <meta name="description" content="Conti-Newty is the continuous multiplayer AI operating system for organizational knowledge. Turn existing folders of markdown files into a live, queryable company brain with verifiable citations.">
+  <link href="https://fonts.googleapis.com" rel="preconnect"/>
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&amp;family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/css/styles.css?v=2.3">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "background": "#FCF9F6",
+            "surface": "#FCF9F6",
+            "surface-container-low": "#F6F3F1",
+            "surface-container": "#EFECE8",
+            "surface-container-high": "#E7E3DD",
+            "surface-container-lowest": "#FFFFFF",
+            "outline": "#877273",
+            "outline-variant": "#E5E0D8",
+            "border-hairline": "#D8D2C7",
+            "on-surface": "#141312",
+            "on-surface-variant": "#544E4B",
+            "primary": "#681E29",
+            "primary-container": "#4B0715",
+            "primary-fixed": "#FFDADB",
+            "on-primary-fixed": "#40000E",
+            "secondary": "#2D6A4F",
+            "secondary-container": "#AEEECB",
+            "on-secondary-container": "#1B4332",
+            "error": "#BA1A1A",
+            "error-container": "#FFDAD6"
+          },
+          fontFamily: {
+            "display-hero": ["Newsreader", "Georgia", "serif"],
+            "headline-lg": ["Newsreader", "Georgia", "serif"],
+            "headline-md": ["Newsreader", "Georgia", "serif"],
+            "headline-sm": ["Newsreader", "Georgia", "serif"],
+            "body-lg": ["Plus Jakarta Sans", "sans-serif"],
+            "body-md": ["Plus Jakarta Sans", "sans-serif"],
+            "body-sm": ["Plus Jakarta Sans", "sans-serif"],
+            "label-code": ["JetBrains Mono", "monospace"],
+            "label-telemetry": ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @layer base {
+      html {
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+      }
+      html, body {
+        background-color: #FCF9F6;
+        color: #141312;
+      }
+    }
+    .font-display-hero, .font-headline-lg, .font-headline-md, .font-headline-sm {
+      font-optical-sizing: auto;
+    }
+    .tabular-nums, .font-label-telemetry {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1, "zero" 1;
+    }
+    ::selection {
+      background-color: #FFDADB;
+      color: #40000E;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D8D2C7;
+      border-radius: 3px;
+    }
+    .beam-flow {
+      background-size: 200% 200%;
+      animation: beamSweep 3s ease infinite;
+    }
+    @keyframes beamSweep {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+  </style>
+</head>
+<body class="bg-surface font-body-md text-on-surface antialiased">
+<!-- ================================================================= -->
+<!-- TOPBAR NAVIGATION CHROME                                         -->
+<!-- ================================================================= -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-[#FCF9F6]/90 backdrop-blur-md border-b border-border-hairline/70 topbar-nav" id="main-topbar">
+  <div class="h-14 max-w-[1440px] mx-auto px-6 md:px-10 flex items-center justify-between">
+    <div class="flex items-center gap-6">
+      <a class="flex items-center gap-2 group" href="#">
+        <span class="font-headline-sm text-lg tracking-tight text-on-surface group-hover:text-primary transition-colors font-semibold uppercase">CONTI-NEWTY</span>
+        <span class="hidden sm:inline-block font-label-code text-[10px] tracking-wider text-primary/70 uppercase">// KNOWLEDGE OS</span>
+      </a>
+    </div>
+    <nav class="hidden lg:flex items-center gap-8 text-xs font-label-code uppercase tracking-wider">
+      <a class="text-primary border-b border-primary pb-0.5 font-semibold nav-link-anim" href="#hero-simulation">Product</a>
+      <a class="text-on-surface-variant hover:text-on-surface transition-colors nav-link-anim" href="#reasoning-moment">Live Traversal</a>
+      <a class="text-on-surface-variant hover:text-on-surface transition-colors nav-link-anim" href="#provenance-demo">Provenance</a>
+      <a class="text-on-surface-variant hover:text-on-surface transition-colors nav-link-anim" href="#surfaces-suite">Surfaces</a>
+      <a class="text-on-surface-variant hover:text-on-surface transition-colors nav-link-anim" href="#multiplayer-canvas">Multiplayer</a>
+      <a class="text-on-surface-variant hover:text-on-surface transition-colors nav-link-anim" href="#enclave-security">Enclave</a>
+    </nav>
+    <div class="flex items-center gap-3">
+      <div class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-secondary/10 border border-secondary/20 text-secondary font-label-telemetry text-[10px] uppercase tracking-wider">
+        <span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
+        <span>SYSTEM READY</span>
+      </div>
+      <a class="inline-flex items-center justify-center px-3.5 py-1.5 rounded bg-primary text-[#FCF9F6] hover:bg-primary-container transition-all font-label-code text-[11px] uppercase tracking-wider shadow-sm tactile-btn" href="/app">
+        [ OPEN WORKSPACE → ]
+      </a>
+    </div>
+  </div>
+</header>
+<main class="w-full pt-14">
+<!-- ================================================================= -->
+<!-- 01. EDITORIAL & SCROLL-DRIVEN PROGRESSIVE PRODUCT HERO            -->
+<!-- ================================================================= -->
+<section class="relative w-full" id="hero-simulation">
+  <!-- Sticky Stage: Pinned in Viewport while user scrolls through spacer -->
+  <div class="sticky top-14 w-full h-[calc(100vh-3.5rem)] flex flex-col justify-center overflow-hidden z-20 bg-surface">
+    <div class="max-w-[1440px] w-full mx-auto px-6 md:px-10 py-4 flex flex-col justify-between h-full max-h-[860px]">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center flex-1 my-auto">
+        <!-- Left Editorial Column (approx 40% weight) -->
+        <div class="lg:col-span-5 flex flex-col justify-between">
+          <div>
+            <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-surface-container border border-border-hairline rounded text-on-surface-variant font-label-code text-[10px] tracking-[0.14em] uppercase font-medium mb-3.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+              ORGANIZATIONAL CONTINUITY ENGINE
+            </div>
+            <h1 class="font-display-hero text-4xl sm:text-5xl lg:text-[54px] text-on-surface tracking-[-0.025em] leading-[1.08] mb-4 font-normal text-balance">
+              Your company already<br/>has a brain.
+            </h1>
+            <p class="font-body-md text-sm md:text-base text-on-surface-variant leading-[1.65] mb-6 max-w-md text-pretty">
+              Your knowledge already exists across runbooks, retros, and operational markdown. Conti-Newty gives it an operating environment where AI navigates, verifies, and reasons from verbatim lines.
+            </p>
+            <div class="flex flex-wrap items-center gap-3 mb-6">
+              <a class="px-5 py-2.5 rounded bg-primary text-white font-label-code text-xs uppercase tracking-wider hover:bg-primary-container transition-all shadow-sm flex items-center gap-2 hover:-translate-y-0.5 active:translate-y-0 font-medium" href="/workbench">
+                <span>[ ASK YOUR COMPANY → ]</span>
+              </a>
+              <a class="px-5 py-2.5 rounded bg-white border border-border-hairline text-on-surface font-label-code text-xs uppercase tracking-wider hover:bg-surface-container transition-all font-medium" href="#transformation">
+                <span>[ SEE HOW IT WORKS ↓ ]</span>
+              </a>
+            </div>
+            
+            <!-- Compact Technical Status Indicators -->
+            <div class="inline-flex flex-wrap items-center gap-4 py-2 px-3 rounded bg-surface-container-low border border-border-hairline font-label-telemetry text-[10px] text-on-surface-variant uppercase tracking-[0.08em] mb-6">
+              <span class="flex items-center gap-1.5 text-primary font-semibold">
+                <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                LIVE REASONING
+              </span>
+              <span class="text-border-hairline">•</span>
+              <span class="flex items-center gap-1.5 text-on-surface">
+                <span class="w-1.5 h-1.5 rounded-sm border border-on-surface"></span>
+                SANDBOXED
+              </span>
+              <span class="text-border-hairline">•</span>
+              <span class="flex items-center gap-1.5 text-secondary font-semibold">
+                <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                100% GROUNDED
+              </span>
+            </div>
+          </div>
+
+          <!-- Hero Micro Metrics -->
+          <div class="pt-4 border-t border-border-hairline grid grid-cols-3 gap-3">
+            <div class="p-2 rounded border border-transparent transition-all duration-300" id="hero-metric-latency">
+              <div class="font-display-hero tabular-nums text-2xl text-on-surface-variant font-normal tracking-tight transition-colors duration-300" id="hero-metric-latency-val">18s</div>
+              <div class="font-label-telemetry text-[10px] text-on-surface-variant uppercase tracking-wider">Lookup Latency</div>
+            </div>
+            <div class="p-2 rounded border border-transparent transition-all duration-300" id="hero-metric-attested">
+              <div class="font-display-hero tabular-nums text-2xl text-on-surface-variant font-normal tracking-tight transition-colors duration-300" id="hero-metric-attested-val">100%</div>
+              <div class="font-label-telemetry text-[10px] text-on-surface-variant uppercase tracking-wider">Line Attested</div>
+            </div>
+            <div class="p-2 rounded">
+              <div class="font-display-hero tabular-nums text-2xl text-secondary font-normal tracking-tight">0</div>
+              <div class="font-label-telemetry text-[10px] text-on-surface-variant uppercase tracking-wider">Handoff Errors</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Product Moment: Scroll-Driven Progressive Workspace (approx 60% weight) -->
+        <div class="lg:col-span-7 bg-white border border-border-hairline rounded-lg shadow-[0_4px_24px_rgba(25,22,20,0.06)] overflow-hidden flex flex-col transition-all duration-300">
+          <!-- App Header Window Bar -->
+          <div class="bg-surface-container-low px-4 py-2.5 border-b border-border-hairline flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="flex gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-border-hairline"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-border-hairline"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-border-hairline"></span>
+              </div>
+              <span class="font-label-code text-[11px] text-on-surface font-medium">CONTI-NEWTY WORKSPACE</span>
+              <span class="hidden sm:inline-block text-border-hairline">/</span>
+              <span class="hidden sm:inline-block font-label-code text-[10px] text-on-surface-variant" id="hero-header-path">/company_brain/</span>
+            </div>
+
+            <!-- Interactive Step Navigation (Clickable Tabs + Keyboard Enabled) -->
+            <div class="flex items-center gap-1" id="hero-step-nav" role="tablist" aria-label="Simulation steps">
+              <button type="button" class="hero-step-btn px-2.5 py-1 rounded text-[10px] font-label-telemetry border border-border-hairline transition-all duration-200 bg-primary text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 hover:opacity-90 active:scale-95 shadow-xs" data-target-step="1" role="tab" aria-selected="true" title="Step 1: Idle Workspace">1</button>
+              <button type="button" class="hero-step-btn px-2.5 py-1 rounded text-[10px] font-label-telemetry border border-border-hairline transition-all duration-200 bg-white text-on-surface-variant cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 hover:bg-surface-container active:scale-95" data-target-step="2" role="tab" aria-selected="false" title="Step 2: Query Intake">2</button>
+              <button type="button" class="hero-step-btn px-2.5 py-1 rounded text-[10px] font-label-telemetry border border-border-hairline transition-all duration-200 bg-white text-on-surface-variant cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 hover:bg-surface-container active:scale-95" data-target-step="3" role="tab" aria-selected="false" title="Step 3: Directory Discovery">3</button>
+              <button type="button" class="hero-step-btn px-2.5 py-1 rounded text-[10px] font-label-telemetry border border-border-hairline transition-all duration-200 bg-white text-on-surface-variant cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 hover:bg-surface-container active:scale-95" data-target-step="4" role="tab" aria-selected="false" title="Step 4: Source Document Opened">4</button>
+              <button type="button" class="hero-step-btn px-2.5 py-1 rounded text-[10px] font-label-telemetry border border-border-hairline transition-all duration-200 bg-white text-on-surface-variant cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 hover:bg-surface-container active:scale-95" data-target-step="5" role="tab" aria-selected="false" title="Step 5: Agent Traversal">5</button>
+              <button type="button" class="hero-step-btn px-2.5 py-1 rounded text-[10px] font-label-telemetry border border-border-hairline transition-all duration-200 bg-white text-on-surface-variant cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 hover:bg-surface-container active:scale-95" data-target-step="6" role="tab" aria-selected="false" title="Step 6: Provenance Verified">6</button>
+              <button type="button" class="hero-step-btn px-2.5 py-1 rounded text-[10px] font-label-telemetry border border-border-hairline transition-all duration-200 bg-white text-on-surface-variant cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 hover:bg-surface-container active:scale-95" data-target-step="7" role="tab" aria-selected="false" title="Step 7: Verified Answer">7</button>
+              <span class="text-border-hairline mx-1">|</span>
+              <span class="font-label-telemetry text-[9px] text-on-surface-variant uppercase tracking-wider hidden sm:inline-block">SCRUB / [1–7] / ← →</span>
+            </div>
+          </div>
+
+          <!-- Step Progression Progress Bar -->
+          <div class="w-full bg-surface-container h-1 relative overflow-hidden">
+            <div class="h-full bg-primary transition-all duration-300 ease-out" id="hero-progress-bar" style="width: 14%;"></div>
+          </div>
+
+          <!-- Active State Storytelling Banner -->
+          <div class="bg-surface-container-low/70 border-b border-border-hairline px-4 py-2 flex items-center justify-between text-[11px] font-label-code">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-primary" id="hero-state-bullet"></span>
+              <span class="font-semibold text-on-surface uppercase tracking-wider text-[10px]" id="hero-state-label">STATE 01 // IDLE / COMPANY BRAIN</span>
+            </div>
+            <span class="font-label-telemetry text-[10px] text-on-surface-variant" id="hero-state-desc">Workspace mounted • Listening for inbound queries</span>
+          </div>
+
+          <!-- 2-Surface Spacious Operational Canvas -->
+          <div class="grid grid-cols-1 md:grid-cols-12 min-h-[440px] text-[11px]">
+            <!-- Left Pane: Source Document Reader (Col 6 / 50%) -->
+            <div class="md:col-span-6 bg-white p-4 border-b md:border-b-0 md:border-r border-border-hairline font-label-code flex flex-col justify-between overflow-hidden">
+              <div class="overflow-hidden">
+                <!-- Subtle Breadcrumb / Directory Header -->
+                <div class="flex items-center justify-between pb-2.5 mb-2.5 border-b border-border-hairline gap-2">
+                  <div class="flex items-center gap-1.5 text-[11px] min-w-0 overflow-hidden" id="hero-doc-breadcrumb">
+                    <span class="material-symbols-outlined text-[14px] text-on-surface-variant shrink-0">folder_open</span>
+                    <span class="text-on-surface-variant/70">company_brain</span>
+                    <span class="text-border-hairline">/</span>
+                    <span class="px-1 py-0.5 rounded transition-colors duration-200" id="tree-item-docs">docs</span>
+                    <span class="text-border-hairline">/</span>
+                    <span class="font-semibold text-on-surface truncate px-1 py-0.5 rounded transition-colors duration-200" id="tree-sub-target">chicago_project_review.md</span>
+                  </div>
+                  <span class="text-[9px] px-2 py-0.5 rounded bg-surface-container font-label-telemetry text-on-surface-variant shrink-0 whitespace-nowrap" id="hero-doc-lines-badge">STANDBY</span>
+                </div>
+                
+                <div class="space-y-1 text-[11px] leading-relaxed font-label-telemetry text-on-surface-variant/80 transition-opacity duration-300" id="hero-doc-content-wrap">
+                  <div class="flex gap-2.5"><span class="w-6 text-right select-none opacity-40">11</span><span class="truncate font-semibold text-on-surface">## Operational Velocity Metrics</span></div>
+                  <div class="flex gap-2.5"><span class="w-6 text-right select-none opacity-40">12</span><span></span></div>
+                  <div class="flex gap-2.5"><span class="w-6 text-right select-none opacity-40">13</span><span class="truncate">Field test evaluation across 40 units:</span></div>
+                  
+                  <!-- Verbatim Line Block with Dynamic Highlight -->
+                  <div class="my-1.5 rounded-md transition-all duration-300 py-1.5 pl-1.5 overflow-hidden" id="hero-doc-highlight">
+                    <div class="flex gap-2.5 text-on-surface font-medium"><span class="w-6 text-right text-primary font-bold">14</span><span class="font-semibold truncate" id="hero-line-14">### Measured Ingestion &amp; Query Gains:</span></div>
+                    <div class="flex gap-2.5 text-on-surface"><span class="w-6 text-right text-primary">15</span><span class="truncate">- Fleet telemetry ingestion finalized: 4.2s.</span></div>
+                    <div class="flex gap-2.5 text-on-surface font-bold px-1.5 py-0.5 rounded transition-colors" id="hero-line-key"><span class="w-6 text-right text-primary">16</span><span class="truncate">- Route deviation lookups: 14 min → 18 seconds.</span></div>
+                    <div class="flex gap-2.5 text-on-surface"><span class="w-6 text-right text-primary">17</span><span class="truncate">- Grounded citation compliance: 99.8%</span></div>
+                    <div class="flex gap-2.5 text-on-surface"><span class="w-6 text-right text-primary">18</span><span class="truncate">- Dispatcher override drop: 44%</span></div>
+                    <div class="flex gap-2.5 text-on-surface"><span class="w-6 text-right text-primary">19</span><span class="truncate">- Sign-off: Ops Director (R. Vance)</span></div>
+                    <div class="flex gap-2.5 text-on-surface"><span class="w-6 text-right text-primary">20</span><span class="truncate">- Node: Chicago Depot Unit 04</span></div>
+                    <div class="flex gap-2.5 text-on-surface"><span class="w-6 text-right text-primary">21</span><span class="truncate">- Status: Pilot Verified Q3</span></div>
+                    <div class="flex gap-2.5 text-on-surface opacity-60"><span class="w-6 text-right text-primary">22</span><span>-----------------------------------</span></div>
+                  </div>
+                  <div class="flex gap-2.5"><span class="w-6 text-right select-none opacity-40">23</span><span class="truncate">Next phase scheduled for Detroit depot.</span></div>
+                </div>
+
+                <!-- Idle Placeholder (Shown in State 1) -->
+                <div class="hidden py-16 text-center text-on-surface-variant font-label-telemetry text-xs space-y-2" id="hero-doc-idle-placeholder">
+                  <span class="material-symbols-outlined text-3xl opacity-30 text-primary">menu_book</span>
+                  <p class="text-xs font-medium text-on-surface">No active file opened in viewport.</p>
+                  <p class="text-[10.5px] opacity-60">Awaiting query resolution path...</p>
+                </div>
+              </div>
+              <div class="pt-2.5 border-t border-border-hairline text-[10px] font-label-telemetry flex items-center justify-between text-on-surface-variant">
+                <span id="hero-doc-status">LINES 14–22 INSPECTED</span>
+                <span class="flex items-center gap-1 text-secondary font-medium"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>GIT: COMMIT #a9f4c8</span>
+              </div>
+            </div>
+
+            <!-- Right Pane: Agent Traversal & Verified Answer (Col 6 / 50%) -->
+            <div class="md:col-span-6 bg-surface-container-low p-4 flex flex-col justify-between overflow-hidden">
+              <div class="overflow-hidden">
+                <div class="flex items-center justify-between pb-2.5 mb-2.5 border-b border-border-hairline">
+                  <div class="flex items-center gap-2 font-label-code font-semibold text-on-surface text-[11px]">
+                    <span class="w-2 h-2 rounded-full bg-secondary animate-pulse" id="hero-agent-pulse"></span>
+                    <span>AGENT TRAVERSAL STREAM</span>
+                  </div>
+                  <span class="font-label-telemetry text-[10px] px-2 py-0.5 rounded bg-white border border-border-hairline text-on-surface font-semibold shadow-xs" id="hero-step-badge">STEP 1 / 7</span>
+                </div>
+
+                <!-- Live Step Stream -->
+                <div class="space-y-2 font-label-code text-[11px]" id="hero-steps-container">
+                  <!-- Step 1 / Query Intake -->
+                  <div class="step-item p-2 rounded-lg bg-white border border-border-hairline text-on-surface transition-all duration-300 shadow-xs" id="step-box-1">
+                    <span class="text-[9px] font-label-telemetry text-primary font-semibold block uppercase tracking-wider">01 // QUERY INTAKE</span>
+                    <span class="italic font-medium text-[11px] leading-tight block mt-0.5" id="step-1-query">"What was the measured efficiency gain in Chicago depot?"</span>
+                  </div>
+
+                  <!-- Step 2 / List Directory -->
+                  <div class="step-item px-2.5 py-1.5 rounded-md text-on-surface-variant text-[10.5px] font-label-telemetry flex items-center gap-2 transition-all duration-300" id="step-box-2">
+                    <span class="material-symbols-outlined text-[14px] text-secondary shrink-0" id="step-2-icon">radio_button_unchecked</span>
+                    <span class="truncate">LIST DIRECTORY: /docs</span>
+                  </div>
+
+                  <!-- Step 3 / Open File -->
+                  <div class="step-item px-2.5 py-1.5 rounded-md text-on-surface-variant text-[10.5px] font-label-telemetry flex items-center gap-2 transition-all duration-300" id="step-box-3">
+                    <span class="material-symbols-outlined text-[14px] text-secondary shrink-0" id="step-3-icon">radio_button_unchecked</span>
+                    <span class="truncate">OPEN /docs/chicago_project_review.md</span>
+                  </div>
+
+                  <!-- Step 4 / Read Lines -->
+                  <div class="step-item px-2.5 py-1.5 rounded-md text-on-surface-variant text-[10.5px] font-label-telemetry flex items-center gap-2 transition-all duration-300" id="step-box-4">
+                    <span class="material-symbols-outlined text-[14px] text-secondary shrink-0" id="step-4-icon">radio_button_unchecked</span>
+                    <span class="truncate">READ LINES 14–22</span>
+                  </div>
+
+                  <!-- Step 5 / Attest -->
+                  <div class="step-item px-2.5 py-1.5 rounded-md text-on-surface-variant text-[10.5px] font-label-telemetry flex items-center gap-2 transition-all duration-300" id="step-box-5">
+                    <span class="material-symbols-outlined text-[14px] text-secondary shrink-0" id="step-5-icon">radio_button_unchecked</span>
+                    <span class="truncate">ATTEST SOURCE VERBATIM (SHA-256)</span>
+                  </div>
+
+                  <!-- Final Grounded Answer Box (Steps 6 & 7) - Refined Editorial Treatment (Hairline rules, parchment tonal shift) -->
+                  <div class="step-item p-3.5 rounded bg-white border border-border-hairline shadow-xs mt-2 transition-all duration-300 overflow-hidden relative" id="step-box-answer">
+                    <div class="flex items-center justify-between gap-2 pb-1.5 border-b border-border-hairline">
+                      <span class="text-[9.5px] font-label-telemetry text-primary font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                        <span>07 // VERIFIED ANSWER</span>
+                      </span>
+                      <span class="text-secondary font-medium text-[9px] font-label-telemetry border border-secondary/30 bg-surface px-2 py-0.5 rounded flex items-center gap-1 shrink-0 whitespace-nowrap tracking-wider uppercase">
+                        <span class="material-symbols-outlined text-[12px]">verified</span>
+                        <span>100% MATCH</span>
+                      </span>
+                    </div>
+                    <p class="font-headline-sm text-[13px] text-on-surface mt-2 leading-snug">
+                      Lookup latency reduced from 14 minutes to <span class="bg-[#F6EFE6] text-primary border-b border-primary/30 px-1.5 py-0.5 font-bold whitespace-nowrap">18 seconds</span>.
+                    </p>
+                    <div class="mt-2.5 pt-2 border-t border-border-hairline/60 flex items-center justify-between text-[10px] font-label-telemetry text-primary font-medium min-w-0">
+                      <div class="flex items-center gap-1.5 truncate">
+                        <span class="material-symbols-outlined text-[13px] shrink-0 text-primary">bookmark_added</span>
+                        <span class="truncate" title="docs/chicago_project_review.md:14–22">docs/chicago_project_review.md:14–22</span>
+                      </div>
+                      <span class="text-[9px] text-on-surface-variant shrink-0 font-normal">CONFIRMED</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pt-2.5 border-t border-border-hairline flex items-center justify-between text-[10px] font-label-telemetry text-on-surface-variant">
+                <span id="hero-agent-footer-time">TOTAL REASONING: 420ms</span>
+                <span class="text-secondary font-semibold flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  <span id="hero-agent-footer-status">AUDIT LOCKED</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Progress Ticks / Navigation Bar -->
+      <div class="pt-3 border-t border-border-hairline flex items-center justify-between font-label-telemetry text-[11px] text-on-surface-variant">
+        <div class="flex items-center gap-2">
+          <span class="uppercase tracking-widest text-[10px]">SCROLL PROGRESS:</span>
+          <div class="flex items-center gap-1.5" id="hero-ticks-bar">
+            <span class="w-6 h-1 rounded bg-primary transition-all duration-200" data-tick="1"></span>
+            <span class="w-6 h-1 rounded bg-border-hairline transition-all duration-200" data-tick="2"></span>
+            <span class="w-6 h-1 rounded bg-border-hairline transition-all duration-200" data-tick="3"></span>
+            <span class="w-6 h-1 rounded bg-border-hairline transition-all duration-200" data-tick="4"></span>
+            <span class="w-6 h-1 rounded bg-border-hairline transition-all duration-200" data-tick="5"></span>
+            <span class="w-6 h-1 rounded bg-border-hairline transition-all duration-200" data-tick="6"></span>
+            <span class="w-6 h-1 rounded bg-border-hairline transition-all duration-200" data-tick="7"></span>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 text-[10px]">
+          <span>STATE <span id="hero-footer-step-num" class="text-primary font-bold">1</span> OF 7</span>
+          <span class="text-secondary font-semibold">● DETERMINISTIC SEQUENCE</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Scroll Distance Spacer (Paced to ~320vh for natural, non-fatiguing traversal) -->
+  <div class="w-full pointer-events-none" id="hero-scroll-spacer" style="height: 320vh;"></div>
+</section>
+
+
+<!-- ================================================================= -->
+<!-- 02. ARCHITECTURAL TRANSFORMATION (NO CARDS: SEAMLESS FLOW)       -->
+<!-- ================================================================= -->
+<section class="w-full bg-surface-container-low py-24 lg:py-28" id="transformation">
+  <div class="max-w-[1440px] mx-auto px-6 md:px-10">
+    <div class="max-w-2xl mb-12 scroll-reveal">
+      <div class="font-label-code text-[11px] text-primary uppercase tracking-[0.14em] font-medium mb-2.5">[ THE KNOWLEDGE SHIFT ]</div>
+      <h2 class="font-headline-lg text-3xl md:text-[38px] text-on-surface font-normal tracking-[-0.02em] leading-[1.12] text-balance">
+        Your knowledge is not missing. <span class="italic font-light text-primary">It is trapped.</span>
+      </h2>
+      <p class="font-body-md text-on-surface-variant mt-3 text-base md:text-[17px] leading-[1.65] text-pretty max-w-[60ch]">
+        Valuable operational context sits in fragmented Slack threads, unshared drives, and unverified runbooks. Conti-Newty organizes this sprawling entropy into an active filesystem kernel.
+      </p>
+    </div>
+    <!-- Before & After Unified Flow Canvas (Frameless Architectural Grid) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+      <!-- Left: Scattered entropy -->
+      <div class="lg:col-span-4 space-y-2.5 font-label-code text-xs">
+        <div class="text-on-surface-variant font-medium text-[11px] uppercase tracking-[0.12em] pb-1 flex items-center gap-2 scroll-reveal">
+          <span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+          <span>FRAGMENTED CONTEXT [PRE-CONTI]</span>
+        </div>
+        <div class="p-3 rounded bg-surface border border-border-hairline flex items-center justify-between text-on-surface-variant scroll-reveal stagger-1">
+          <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-[16px] text-on-surface-variant">chat</span>
+            <span class="text-[11.5px] font-medium text-on-surface">Ephemeral Slack Thread (#ops)</span>
+          </div>
+          <span class="font-label-telemetry text-[9px] text-error/80 border border-error/20 bg-error/5 px-1.5 py-0.5 rounded tracking-wider uppercase font-medium">UNINDEXED</span>
+        </div>
+        <div class="p-3 rounded bg-surface border border-border-hairline flex items-center justify-between text-on-surface-variant scroll-reveal stagger-2">
+          <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-[16px] text-on-surface-variant">picture_as_pdf</span>
+            <span class="text-[11.5px] font-medium text-on-surface">Depot_Runbook_v2_FINAL.pdf</span>
+          </div>
+          <span class="font-label-telemetry text-[9px] text-error/80 border border-error/20 bg-error/5 px-1.5 py-0.5 rounded tracking-wider uppercase font-medium">OUTDATED</span>
+        </div>
+        <div class="p-3 rounded bg-surface border border-border-hairline flex items-center justify-between text-on-surface-variant scroll-reveal stagger-3">
+          <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-[16px] text-on-surface-variant">psychology</span>
+            <span class="text-[11.5px] font-medium text-on-surface">Unwritten Head of Ops Memory</span>
+          </div>
+          <span class="font-label-telemetry text-[9px] text-error/80 border border-error/20 bg-error/5 px-1.5 py-0.5 rounded tracking-wider uppercase font-medium">UNRECORDED</span>
+        </div>
+      </div>
+      <!-- Center: Connecting Synthesis Beam -->
+      <div class="lg:col-span-3 flex flex-col items-center justify-center py-4 scroll-reveal stagger-2">
+        <div class="w-full flex items-center justify-center">
+          <svg class="w-full h-16 text-border-hairline" fill="none" viewbox="0 0 300 80" xmlns="http://www.w3.org/2000/svg">
+            <path class="synthesis-beam-path" d="M 10 20 C 90 20, 130 40, 190 40 L 290 40" stroke="#D8D2C7" stroke-width="1.2"></path>
+            <path class="synthesis-beam-path" d="M 10 40 L 290 40" stroke="#681E29" stroke-width="1.5"></path>
+            <path class="synthesis-beam-path" d="M 10 60 C 90 60, 130 40, 190 40 L 290 40" stroke="#D8D2C7" stroke-width="1.2"></path>
+            <circle class="synthesis-beam-pulse" cx="190" cy="40" fill="#681E29" r="3.5"></circle>
+            <circle class="synthesis-beam-pulse" cx="290" cy="40" fill="#2D6A4F" r="3"></circle>
+          </svg>
+        </div>
+        <span class="font-label-telemetry text-[10px] uppercase tracking-[0.12em] text-on-surface-variant text-center font-medium mt-1">DETERMINISTIC INGESTION PIPELINE</span>
+      </div>
+      <!-- Right: Structured Conti-Newty Repository -->
+      <div class="lg:col-span-5 bg-white border border-border-hairline rounded p-5 font-label-code text-xs text-on-surface space-y-1.5 shadow-xs scroll-reveal stagger-3">
+        <div class="font-semibold text-primary flex items-center gap-1.5 pb-2 border-b border-border-hairline">
+          <span class="material-symbols-outlined text-[16px]">folder_special</span>
+          <span>/company_brain/</span>
+        </div>
+        <div class="pl-3 text-on-surface-variant flex items-center justify-between" id="tree-item-prompts">
+          <span>├── /prompts</span>
+          <span class="text-[9px] font-label-telemetry text-secondary border border-secondary/30 bg-surface px-1.5 py-0.5 rounded font-medium tracking-wider uppercase">[MOUNTED]</span>
+        </div>
+        <div class="pl-3 font-medium flex items-center justify-between" id="tree-item-docs">
+          <span>├── /docs</span>
+        </div>
+        <div class="pl-6 text-on-surface-variant">
+          <span>│   ├── overview.md</span>
+        </div>
+        <div class="pl-6 text-primary font-semibold flex items-center justify-between bg-[#F6EFE6] border-l border-primary/50 px-2 py-1 rounded-r">
+          <span>│   └── chicago_project_review.md</span>
+          <span class="text-[9px] font-label-telemetry text-primary border border-primary/30 bg-white px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase">★ ATTESTED</span>
+        </div>
+        <div class="pl-3 text-on-surface-variant" id="tree-item-sops">
+          <span>├── /sops</span>
+        </div>
+        <div class="pl-6 text-on-surface-variant">
+          <span>│   └── dispatcher_escalation.md</span>
+        </div>
+        <div class="pl-3 text-on-surface-variant flex items-center justify-between" id="tree-item-telemetry">
+          <span>└── /telemetry/latency_benchmarks.json</span>
+          <span class="text-[9px] font-label-telemetry text-on-surface-variant/60">[LOGS]</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================= -->
+<!-- 03. MASSIVE PRODUCT MOMENT: LIVE REASONING & PROOF BEAM          -->
+<!-- ================================================================= -->
+<section class="w-full max-w-[1440px] mx-auto px-6 md:px-10 py-24 lg:py-28" id="reasoning-moment">
+  <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6 scroll-reveal">
+    <div>
+      <div class="font-label-code text-[11px] text-primary uppercase tracking-[0.14em] font-medium mb-2.5">[ DETERMINISTIC REASONING ]</div>
+      <h2 class="font-headline-lg text-3xl md:text-[38px] text-on-surface font-normal tracking-[-0.02em] leading-[1.12] text-balance">
+        Watch Conti-Newty find the answer.
+      </h2>
+      <p class="font-body-md text-on-surface-variant mt-2 text-base md:text-[17px] leading-[1.65] text-pretty max-w-[58ch]">
+        No statistical guessing or hallucinated summaries. Real filesystem traversal with an interactive audit beam.
+      </p>
+    </div>
+    <!-- Query Selector Pills -->
+    <div class="flex flex-wrap items-center gap-2 font-label-code text-xs">
+      <span class="text-on-surface-variant text-[11px] mr-1 uppercase tracking-wider font-medium">QUERY:</span>
+      <button class="query-pill active-query px-3 py-1.5 rounded border border-primary bg-primary text-white text-[11px] transition-all font-medium tactile-btn" data-query="chicago">
+        Chicago Depot Latency
+      </button>
+      <button class="query-pill px-3 py-1.5 rounded border border-border-hairline bg-surface text-on-surface-variant hover:text-on-surface text-[11px] transition-all font-medium tactile-btn" data-query="coldchain">
+        Cold-Chain SOP
+      </button>
+      <button class="query-pill px-3 py-1.5 rounded border border-border-hairline bg-surface text-on-surface-variant hover:text-on-surface text-[11px] transition-all font-medium tactile-btn" data-query="seriesa">
+        Series A Retention
+      </button>
+    </div>
+  </div>
+  <!-- Large Split Product Canvas -->
+  <div class="bg-white border border-border-hairline rounded shadow-xs overflow-hidden grid grid-cols-1 lg:grid-cols-12 scroll-reveal stagger-1">
+    <!-- Left: Query Execution & Navigation Console (Col 5) -->
+    <div class="lg:col-span-5 p-5 md:p-6 bg-surface-container-low border-b lg:border-b-0 lg:border-r border-border-hairline flex flex-col justify-between">
+      <div class="space-y-4">
+        <div class="flex items-center justify-between pb-2 border-b border-border-hairline font-label-code text-[11px]">
+          <span class="text-on-surface-variant uppercase font-semibold">1. REASONING INTAKE</span>
+          <span class="text-secondary font-label-telemetry tabular-nums">LATENCY: 420ms</span>
+        </div>
+        <div class="p-3.5 bg-white border border-border-hairline rounded">
+          <span class="font-label-telemetry text-[9px] text-on-surface-variant uppercase tracking-wider block font-medium">ACTIVE PROMPT</span>
+          <p class="font-display-hero text-lg md:text-xl text-on-surface italic tracking-[-0.01em] leading-snug mt-1" id="interactive-query-text">
+            "What was the measured efficiency gain in our Chicago depot deployment?"
+          </p>
+        </div>
+        <!-- Traversal Tool Steps -->
+        <div class="space-y-2 font-label-code text-[11px]">
+          <div class="flex items-center justify-between p-2 rounded bg-white border border-border-hairline">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-secondary text-[15px]">folder</span>
+              <span>1. /docs</span>
+            </div>
+            <span class="font-label-telemetry text-[9px] text-secondary">TARGET DIRECTORY</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded bg-white border border-border-hairline">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-secondary text-[15px]">article</span>
+              <span id="interactive-file-target">chicago_project_review.md</span>
+            </div>
+            <span class="font-label-telemetry text-[9px] text-secondary">EXACT MATCH</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded bg-white border border-border-hairline">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-[15px]">format_list_numbered</span>
+              <span id="interactive-line-target">Lines 14–22 Extracted</span>
+            </div>
+            <span class="font-label-telemetry text-[9px] text-primary">PARITY VERIFIED</span>
+          </div>
+        </div>
+        <!-- Grounded Answer Card - Editorial Treatment -->
+        <div class="p-3.5 rounded bg-white border border-border-hairline shadow-xs">
+          <div class="flex items-center justify-between pb-1.5 border-b border-border-hairline">
+            <span class="font-label-telemetry text-[9px] uppercase tracking-[0.1em] text-primary font-semibold flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+              <span>SYNTHESIZED GROUNDED RESULT</span>
+            </span>
+            <span class="text-secondary font-medium text-[9px] font-label-telemetry border border-secondary/30 bg-surface px-2 py-0.5 rounded flex items-center gap-1 shrink-0 whitespace-nowrap tracking-wider uppercase">
+              <span class="material-symbols-outlined text-[12px]">verified</span>
+              <span>100% MATCH</span>
+            </span>
+          </div>
+          <p class="font-headline-sm text-base md:text-[17px] text-on-surface mt-2 leading-[1.4] tracking-[-0.01em]" id="interactive-answer-text">
+            Average incident escalation time dropped from 14 minutes down to <span class="bg-[#F6EFE6] text-primary border-b border-primary/30 px-1.5 py-0.5 font-bold rounded">18 seconds</span> across 40 units.
+          </p>
+          <!-- Active Beam Button -->
+          <div class="mt-3 pt-2 border-t border-border-hairline flex items-center justify-between font-label-telemetry text-[11px]">
+            <button class="text-primary hover:text-primary-container font-semibold flex items-center gap-1.5 transition-colors tactile-btn" id="trigger-beam-btn">
+              <span class="material-symbols-outlined text-[14px]">my_location</span>
+              <span id="interactive-citation-label">[source: docs/chicago_project_review.md:14–22]</span>
+            </button>
+            <span class="text-[9px] text-on-surface-variant font-normal">CLICK CITATION TO PULSE</span>
+          </div>
+        </div>
+      </div>
+      <div class="pt-4 border-t border-border-hairline flex items-center justify-between text-[10px] font-label-telemetry text-on-surface-variant">
+        <span>ISOLATED ENCLAVE SANDBOX</span>
+        <span class="text-secondary font-semibold">● 0 CHUNK SPLITTING</span>
+      </div>
+    </div>
+    <!-- Right: Source Document Viewer & Interactive Beam Target (Col 7) -->
+    <div class="lg:col-span-7 bg-white p-5 md:p-6 flex flex-col justify-between relative overflow-hidden" id="interactive-doc-panel">
+      <!-- Beam Flash Element -->
+      <div class="absolute inset-0 bg-primary-fixed/20 opacity-0 pointer-events-none transition-opacity duration-300" id="beam-indicator"></div>
+      <div>
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-border-hairline font-label-code text-xs">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-[16px]">menu_book</span>
+            <span class="font-semibold text-on-surface" id="interactive-doc-title">docs/chicago_project_review.md</span>
+          </div>
+          <div class="flex items-center gap-2 font-label-telemetry text-[10px] text-on-surface-variant">
+            <span>COMMIT: #a9f4c8</span>
+            <span class="text-secondary font-semibold">● VERIFIED RECORD</span>
+          </div>
+        </div>
+        <!-- Document Text Container -->
+        <div class="font-label-telemetry text-xs leading-relaxed text-on-surface-variant space-y-1" id="interactive-lines-container">
+          <div class="flex gap-3"><span class="w-6 text-right select-none opacity-40">11</span><span>## 3. Operational Velocity Metrics</span></div>
+          <div class="flex gap-3"><span class="w-6 text-right select-none opacity-40">12</span><span></span></div>
+          <div class="flex gap-3"><span class="w-6 text-right select-none opacity-40">13</span><span>Objective: minimize dispatcher latency on cross-hub route anomalies.</span></div>
+          <!-- Verbatim Lines Block with Interactive ID (Parchment Tonal Shift & Hairline Rule) -->
+          <div class="bg-[#F6EFE6] border-l border-primary/60 pl-3 py-2 transition-all duration-300" id="interactive-highlight-box">
+            <div class="flex gap-3 text-on-surface font-semibold"><span class="w-6 text-right text-primary font-bold">14</span><span class="text-primary font-bold">Measured Ingestion &amp; Query Gains:</span></div>
+            <div class="flex gap-3 text-on-surface"><span class="w-6 text-right text-primary">15</span><span>- Fleet telemetry ingestion finalized in 4.2 seconds across all depots.</span></div>
+            <div class="flex gap-3 text-on-surface font-bold bg-white px-1.5 py-0.5 rounded border border-border-hairline/60"><span class="w-6 text-right text-primary">16</span><span>- Route deviation lookups dropped from 14 minutes down to 18 seconds.</span></div>
+            <div class="flex gap-3 text-on-surface"><span class="w-6 text-right text-primary">17</span><span>- Dispatch team verified 100% citation compliance over 340 exceptions.</span></div>
+            <div class="flex gap-3 text-on-surface"><span class="w-6 text-right text-primary">18</span><span>- Escalations requiring supervisor override plummeted by 44%.</span></div>
+            <div class="flex gap-3 text-on-surface"><span class="w-6 text-right text-primary">19</span><span>- Signoff: Robert Vance, Vice President of Supply Operations.</span></div>
+            <div class="flex gap-3 text-on-surface"><span class="w-6 text-right text-primary">20</span><span>- Node: Chicago Depot Unit 04 (East Hall Annex).</span></div>
+            <div class="flex gap-3 text-on-surface"><span class="w-6 text-right text-primary">21</span><span>- Continuous verification audit recorded and locked.</span></div>
+            <div class="flex gap-3 text-on-surface opacity-60"><span class="w-6 text-right text-primary">22</span><span>---------------------------------------------------------</span></div>
+          </div>
+          <div class="flex gap-3 mt-1"><span class="w-6 text-right select-none opacity-40">23</span><span></span></div>
+          <div class="flex gap-3"><span class="w-6 text-right select-none opacity-40">24</span><span>Recommended for company-wide deployment starting Q4.</span></div>
+        </div>
+      </div>
+      <div class="pt-3 mt-4 border-t border-border-hairline flex items-center justify-between text-[11px] font-label-telemetry text-on-surface-variant">
+        <span id="interactive-range-footer">LINES 14–22 HIGHLIGHTED • 9 VERBATIM LINES</span>
+        <span class="text-primary font-medium">CLICK CITATION TO PULSE</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================= -->
+<!-- 04. VISUAL PROVENANCE INTERACTION SECTION                        -->
+<!-- ================================================================= -->
+<section class="w-full bg-surface-container-low py-24 lg:py-28" id="provenance-demo">
+  <div class="max-w-[1440px] mx-auto px-6 md:px-10">
+    <div class="max-w-2xl mb-12 scroll-reveal">
+      <div class="font-label-code text-[11px] text-primary uppercase tracking-[0.14em] font-medium mb-2.5">[ AUDITABLE PROOF ]</div>
+      <h2 class="font-headline-lg text-3xl md:text-[38px] text-on-surface font-normal tracking-[-0.02em] leading-[1.12] text-balance">
+        100% Line-Grounded Provenance.
+      </h2>
+      <p class="font-body-md text-on-surface-variant mt-2 text-base md:text-[17px] leading-[1.65] text-pretty max-w-[58ch]">
+        Every statement emitted by Conti-Newty links directly to unedited lines in your repository. Click any citation coordinate to jump straight to source proof.
+      </p>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+      <!-- Synthesized Statement with Active Pill (Col 5) -->
+      <div class="lg:col-span-5 bg-white border border-border-hairline rounded p-6 flex flex-col justify-between shadow-xs scroll-reveal stagger-1">
+        <div>
+          <div class="flex items-center justify-between pb-3 border-b border-border-hairline mb-4 font-label-code text-xs">
+            <span class="text-on-surface-variant uppercase font-medium">EXECUTIVE BRIEFING INSIGHT</span>
+            <span class="text-secondary font-label-telemetry border border-secondary/30 bg-surface px-2 py-0.5 rounded flex items-center gap-1.5 text-[10px] tracking-wider uppercase font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+              PROOF ATTESTED
+            </span>
+          </div>
+          <h3 class="font-display-hero text-2xl md:text-[26px] text-on-surface leading-[1.22] tracking-[-0.015em] mb-4 text-balance">
+            "The Chicago logistics pilot reduced dispatcher lookup latency from 14 minutes to 18 seconds."
+          </h3>
+          <p class="font-body-md text-sm md:text-base text-on-surface-variant leading-[1.65] mb-6 text-pretty">
+            Evaluated across 40 full-time logistics coordinators. Instead of summarizing from training memories, Conti-Newty extracts verbatim numbers and preserves the exact source coordinates.
+          </p>
+          <!-- Clickable Interactive Pill -->
+          <div class="p-3.5 bg-surface-container-low border border-border-hairline rounded">
+            <span class="font-label-telemetry text-[10px] text-on-surface-variant uppercase tracking-wider block mb-1.5 font-medium">INTERACTIVE CITATION COORDINATE</span>
+            <button class="w-full flex items-center justify-between px-3.5 py-2.5 bg-primary text-white rounded font-label-code text-xs hover:bg-primary-container transition-all tactile-btn" id="prov-jump-btn">
+              <span class="flex items-center gap-1.5 font-medium">
+                <span class="material-symbols-outlined text-[15px]">verified</span>
+                <span>[SRC: docs/chicago_project_review.md:14–22]</span>
+              </span>
+              <span class="font-label-telemetry text-[10px] opacity-80">JUMP TO LINE →</span>
+            </button>
+          </div>
+        </div>
+        <div class="pt-4 mt-6 border-t border-border-hairline font-label-telemetry text-[11px] text-on-surface-variant flex items-center justify-between">
+          <span>ZERO HALLUCINATED DELTAS</span>
+          <span class="text-secondary font-semibold">● IMMUTABLE CITATION</span>
+        </div>
+      </div>
+      <!-- Document Inspection Pane with Smooth Target Highlight (Col 7) -->
+      <div class="lg:col-span-7 bg-white border border-border-hairline rounded overflow-hidden shadow-xs flex flex-col justify-between scroll-reveal stagger-2">
+        <div>
+          <div class="bg-surface-container-low px-4 py-3 border-b border-border-hairline flex items-center justify-between font-label-code text-xs">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-[16px]">article</span>
+              <span class="font-semibold text-on-surface">docs/chicago_project_review.md</span>
+            </div>
+            <div class="font-label-telemetry text-[10px] text-secondary font-medium border border-secondary/30 bg-surface px-1.5 py-0.5 rounded flex items-center gap-1 tracking-wider uppercase">
+              <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+              <span>SOURCE INTACT</span>
+            </div>
+          </div>
+          <!-- Lines View -->
+          <div class="p-5 font-label-telemetry text-xs leading-relaxed text-on-surface-variant space-y-1">
+            <div class="flex gap-3"><span class="w-6 text-right select-none opacity-40">11</span><span>## 3. Operational Velocity Metrics</span></div>
+            <div class="flex gap-3"><span class="w-6 text-right select-none opacity-40">12</span><span></span></div>
+            <div class="flex gap-3"><span class="w-6 text-right select-none opacity-40">13</span><span>The primary objective was reducing dispatcher time-to-answer on route deviations.</span></div>
+            <!-- Target Proof Highlight Block (Parchment Tonal Shift & Hairline Rule) -->
+            <div class="bg-[#F6EFE6] border-l border-primary/60 pl-3 py-2 transition-all duration-300" id="prov-proof-block">
+              <div class="flex gap-3 text-on-surface font-semibold"><span class="w-6 text-right text-primary font-bold">14</span><span class="text-primary font-bold">Measured Ingestion &amp; Query Gains:</span></div>
+              <div class="flex gap-3 text-on-surface"><span class="w-6 text-right text-primary">15</span><span>- Ingestion completed in 4.2 seconds across 1,840 fleet telemetry records.</span></div>
+              <div class="flex gap-3 text-on-surface font-bold bg-white px-1.5 py-0.5 rounded border border-border-hairline/60"><span class="w-6 text-right text-primary">16</span><span>- Route deviation lookups dropped from 14 minutes average down to 18 seconds.</span></div>
+              <div class="flex gap-3 text-on-surface"><span class="w-6 text-right text-primary">17</span><span>- Dispatch team verified 100% accuracy over 340 test exceptions.</span></div>
+              <div class="flex gap-3 text-on-surface"><span class="w-6 text-right text-primary">18</span><span>- Escalations requiring supervisor override plummeted by 44%.</span></div>
+              <div class="flex gap-3 text-on-surface"><span class="w-6 text-right text-primary">19</span><span>- Signoff: Robert Vance, Vice President of Supply Fleet Ops</span></div>
+              <div class="flex gap-3 text-on-surface"><span class="w-6 text-right text-primary">20</span><span>- Node: Chicago Depot Unit 04 (East Hall Annex)</span></div>
+              <div class="flex gap-3 text-on-surface"><span class="w-6 text-right text-primary">21</span><span>- Continuous verification audit recorded and locked.</span></div>
+              <div class="flex gap-3 text-on-surface opacity-60"><span class="w-6 text-right text-primary">22</span><span>-----------------------------------</span></div>
+            </div>
+            <div class="flex gap-3 mt-1"><span class="w-6 text-right select-none opacity-40">23</span><span></span></div>
+            <div class="flex gap-3"><span class="w-6 text-right select-none opacity-40">24</span><span>Recommended for company-wide deployment starting Q4.</span></div>
+          </div>
+        </div>
+        <div class="bg-surface-container-low px-4 py-2.5 border-t border-border-hairline flex items-center justify-between font-label-telemetry text-[11px] text-on-surface-variant">
+          <span>LINE RANGE: 14–22 (VERBATIM PROOF)</span>
+          <span class="text-primary font-semibold">[PROVENANCE LOCKED]</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================= -->
+<!-- 05. IMMERSIVE THREE SURFACES SUITE                               -->
+<!-- ================================================================= -->
+<section class="w-full max-w-[1440px] mx-auto px-6 md:px-10 py-24 lg:py-28" id="surfaces-suite">
+  <div class="text-center max-w-2xl mx-auto mb-10 scroll-reveal">
+    <div class="font-label-code text-[11px] text-primary uppercase tracking-[0.14em] font-medium mb-2.5">[ THE OPERATING SURFACES ]</div>
+    <h2 class="font-headline-lg text-3xl md:text-[38px] text-on-surface font-normal tracking-[-0.02em] leading-[1.12] text-balance">
+      Three surfaces. One company brain.
+    </h2>
+    <p class="font-body-md text-on-surface-variant mt-2 text-base md:text-[17px] leading-[1.65] text-pretty max-w-[58ch] mx-auto">
+      Knowledge architecture demands filesystem clarity, multiplayer human editing, and autonomous traversal. Conti-Newty weaves all three together.
+    </p>
+  </div>
+  <!-- Segmented Surface Tabs -->
+  <div class="flex justify-center mb-10 scroll-reveal stagger-1">
+    <div class="inline-flex p-1.5 bg-surface-container border border-border-hairline rounded-lg font-label-code text-xs shadow-2xs">
+      <button class="surface-btn active-surf px-4 py-2 rounded bg-white text-primary font-semibold shadow-xs transition-all tracking-[0.04em] tactile-btn" data-surf="tree">
+        01 // LIVING FOLDER TREE
+      </button>
+      <button class="surface-btn px-4 py-2 rounded text-on-surface-variant hover:text-on-surface transition-all tracking-[0.04em] font-medium tactile-btn" data-surf="doc">
+        02 // COLLABORATIVE DOCUMENT
+      </button>
+      <button class="surface-btn px-4 py-2 rounded text-on-surface-variant hover:text-on-surface transition-all tracking-[0.04em] font-medium tactile-btn" data-surf="agent">
+        03 // NAVIGATION AGENT
+      </button>
+    </div>
+  </div>
+  <!-- Surface Container Box -->
+  <div class="bg-white border border-border-hairline rounded-lg shadow-xs p-6 lg:p-8 min-h-[440px] scroll-reveal stagger-2">
+    <!-- Surface 01: Folder Tree -->
+    <div class="surface-pane block" id="surf-tree">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <div class="lg:col-span-5 space-y-4">
+          <span class="font-label-telemetry text-xs text-primary uppercase font-semibold tracking-[0.1em]">STRUCTURED REPOSITORY KERNEL</span>
+          <h3 class="font-headline-md text-2xl md:text-[26px] text-on-surface font-normal tracking-[-0.015em] leading-[1.2] text-balance">Human-readable, Git-backed filesystems.</h3>
+          <p class="font-body-md text-sm md:text-base text-on-surface-variant leading-[1.65] text-pretty">
+            No closed databases. Your knowledge resides in plain markdown and directories. Mount Conti-Newty directly on top of Git with zero proprietary lock-in.
+          </p>
+          <ul class="space-y-2 font-label-code text-xs text-on-surface">
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-[16px]">check</span> Plain markdown files &amp; folder governance</li>
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-[16px]">check</span> Instant recursive traversal across hundreds of documents</li>
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-[16px]">check</span> Git commit history recorded with every update</li>
+          </ul>
+        </div>
+        <div class="lg:col-span-7 bg-surface-container-low border border-border-hairline rounded-lg p-4 font-label-code text-xs">
+          <div class="flex justify-between items-center pb-2 border-b border-border-hairline text-on-surface-variant font-label-telemetry text-[10px]">
+            <span>DIRECTORY EXPLORER // BRANCH: main</span>
+            <span class="text-secondary font-medium">POSIX COMPLIANT</span>
+          </div>
+          <div class="py-3 space-y-1.5 text-on-surface">
+            <div class="text-primary font-semibold flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[15px]">folder_open</span>
+              <span>/company_brain_root/</span>
+            </div>
+            <div class="pl-4 text-on-surface-variant flex items-center justify-between">
+              <span>├── .conti-newty/policy.yml</span>
+              <span class="text-[9px] font-label-telemetry text-secondary font-semibold">[ENCLAVE ENFORCED]</span>
+            </div>
+            <div class="pl-4 font-medium flex items-center gap-1">
+              <span>├── /docs</span>
+            </div>
+            <div class="pl-8 text-on-surface-variant">
+              <span>│   ├── executive_charter.md</span>
+            </div>
+            <div class="pl-8 text-primary font-semibold flex items-center justify-between bg-primary-fixed/40 px-1 py-0.5 rounded">
+              <span>│   └── chicago_project_review.md</span>
+              <span class="text-[9px] font-label-telemetry text-primary font-semibold">★ ACTIVE</span>
+            </div>
+            <div class="pl-8 text-on-surface-variant">
+              <span>│   └── fundraising_status.md</span>
+            </div>
+            <div class="pl-4 text-on-surface-variant">
+              <span>├── /sops/cold_chain_deviations.md</span>
+            </div>
+            <div class="pl-4 text-on-surface-variant">
+              <span>└── /telemetry/latency_benchmarks.json</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Surface 02: Collaborative Document (Hidden by Default) -->
+    <div class="surface-pane hidden" id="surf-doc">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <div class="lg:col-span-5 space-y-4">
+          <span class="font-label-telemetry text-xs text-primary uppercase font-semibold tracking-[0.1em]">COLLABORATIVE CANVAS</span>
+          <h3 class="font-headline-md text-2xl md:text-[26px] text-on-surface font-normal tracking-[-0.015em] leading-[1.2] text-balance">Humans and AI editing the same living document.</h3>
+          <p class="font-body-md text-sm md:text-base text-on-surface-variant leading-[1.65] text-pretty">
+            Work shoulder-to-shoulder with team members and autonomous agents. The AI proposes line-level improvements while humans review and commit seamlessly.
+          </p>
+          <ul class="space-y-2 font-label-code text-xs text-on-surface">
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-[16px]">check</span> Real-time multi-cursor editing</li>
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-[16px]">check</span> Instant line diff previews with single-click approval</li>
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-[16px]">check</span> Zero merge conflicts through convergent CRDT logic</li>
+          </ul>
+        </div>
+        <div class="lg:col-span-7 bg-surface-container-low border border-border-hairline rounded-lg p-4 font-label-code text-xs">
+          <div class="flex justify-between items-center pb-2 border-b border-border-hairline font-label-telemetry text-[10px]">
+            <span class="font-semibold text-on-surface">EDITOR // /docs/fundraising_status.md</span>
+            <span class="text-secondary font-medium">3 COLLABORATORS</span>
+          </div>
+          <div class="py-3 space-y-1.5 font-label-telemetry text-xs leading-relaxed">
+            <div class="flex gap-2 text-on-surface"><span class="w-5 text-right opacity-40 select-none">01</span><span># Series A Preparation Memo</span></div>
+            <div class="flex gap-2 text-on-surface"><span class="w-5 text-right opacity-40 select-none">02</span><span>Target: $12M financing to expand autonomous depot kernels.</span></div>
+            <div class="flex gap-2 bg-secondary/8 border-l-2 border-secondary/70 pl-2 py-0.5 rounded-r">
+              <span class="w-5 text-right text-secondary select-none">03</span>
+              <span class="text-on-surface">ARR grew 3.8x with net retention holding steady at 98.4%.</span>
+              <span class="bg-secondary text-white px-1.5 py-0.2 rounded text-[9px] font-semibold ml-1">Alex Rivera</span>
+            </div>
+            <div class="flex gap-2 text-on-surface"><span class="w-5 text-right opacity-40 select-none">04</span><span>Gross margins stabilized at 82% post-deployment.</span></div>
+            <div class="flex gap-2 bg-primary-fixed/30 border-l-2 border-primary/70 pl-2 py-0.5 rounded-r">
+              <span class="w-5 text-right text-primary select-none">05</span>
+              <span class="text-on-surface">+ Proposed: Add verified 18-second Chicago latency metrics to Appendix B.</span>
+              <span class="bg-primary text-white px-1.5 py-0.2 rounded text-[9px] font-semibold ml-1">Navigation Agent</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Surface 03: Navigation Agent (Hidden by Default) -->
+    <div class="surface-pane hidden" id="surf-agent">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <div class="lg:col-span-5 space-y-4">
+          <span class="font-label-telemetry text-xs text-primary uppercase font-semibold tracking-[0.1em]">AUTONOMOUS TRAVERSAL KERNEL</span>
+          <h3 class="font-headline-md text-2xl md:text-[26px] text-on-surface font-normal tracking-[-0.015em] leading-[1.2] text-balance">Real tool calls. Real verifiable steps.</h3>
+          <p class="font-body-md text-sm md:text-base text-on-surface-variant leading-[1.65] text-pretty">
+            Watch the AI reason in transparent plain text. Every command—from directory scans to line reading—is exposed live with tamper-proof certainty.
+          </p>
+          <ul class="space-y-2 font-label-code text-xs text-on-surface">
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-[16px]">check</span> Sandboxed container execution with read-only guarantees</li>
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-[16px]">check</span> Complete replayability of every navigation path</li>
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-[16px]">check</span> Zero intermediate handoff errors between agent nodes</li>
+          </ul>
+        </div>
+        <div class="lg:col-span-7 bg-surface-container-low border border-border-hairline rounded-lg p-4 font-label-code text-xs">
+          <div class="flex justify-between items-center pb-2 border-b border-border-hairline font-label-telemetry text-[10px]">
+            <span class="font-semibold text-on-surface">TRACE INSPECTOR // EXECUTION #tr-8994</span>
+            <span class="text-secondary font-medium">CONTAINER ACTIVE</span>
+          </div>
+          <div class="py-2 space-y-1.5 font-label-telemetry text-xs">
+            <div class="text-on-surface-variant">&gt; tool_call: fs_list_directory(path="/docs")</div>
+            <div class="text-secondary pl-2">→ return: ["overview.md", "chicago_project_review.md", "fundraising_status.md"]</div>
+            <div class="text-on-surface-variant">&gt; tool_call: fs_grep(file="/docs/chicago_project_review.md", pattern="latency|efficiency")</div>
+            <div class="text-secondary pl-2">→ match: lines 14–22 "Measured Ingestion &amp; Query Gains"</div>
+            <div class="text-on-surface-variant">&gt; tool_call: fs_read_lines(file="/docs/chicago_project_review.md", start=14, end=22)</div>
+            <div class="text-primary font-semibold pl-2">→ buffer loaded: lines 14–22 validated</div>
+            <div class="p-2.5 rounded bg-white border border-border-hairline text-on-surface mt-2 font-body-sm text-xs">
+              <strong>Deterministic Assertion:</strong> Dispatcher latency reduced from 14 minutes to 18 seconds [Grounded].
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================= -->
+<!-- 06. LIVING MULTIPLAYER WORKSPACE                                 -->
+<!-- ================================================================= -->
+<section class="w-full bg-surface-container-low py-24 lg:py-28" id="multiplayer-canvas">
+  <div class="max-w-[1440px] mx-auto px-6 md:px-10">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+      <!-- Left Narrative (Col 5) -->
+      <div class="lg:col-span-5 space-y-4 scroll-reveal">
+        <div class="font-label-code text-[11px] text-primary uppercase tracking-[0.14em] font-medium mb-2.5">[ COGNITIVE MULTIPLAYER ]</div>
+        <h2 class="font-headline-lg text-3xl md:text-[38px] text-on-surface font-normal tracking-[-0.02em] leading-[1.12] text-balance">
+          AI should never be an isolated sandbox.
+        </h2>
+        <p class="font-body-md text-on-surface-variant text-base md:text-[17px] leading-[1.65] text-pretty max-w-[54ch]">
+          Legacy AI isolates team members into personal chat silos where institutional memory dies. Conti-Newty turns intelligence into a shared canvas where humans and autonomous agents co-author the same documents in real time.
+        </p>
+        <!-- Live Presence Status Pills -->
+        <div class="space-y-2 font-label-code text-xs pt-2">
+          <div class="flex items-center gap-2 p-2 bg-white border border-border-hairline rounded scroll-reveal stagger-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-primary shrink-0"></span>
+            <span class="font-semibold text-on-surface">Alex Rivera (Lead Dispatch)</span>
+            <span class="text-on-surface-variant text-[11px] ml-auto font-label-telemetry">editing line 19</span>
+          </div>
+          <div class="flex items-center gap-2 p-2 bg-white border border-border-hairline rounded scroll-reveal stagger-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-secondary shrink-0"></span>
+            <span class="font-semibold text-on-surface">Maya Lin (Strategy)</span>
+            <span class="text-on-surface-variant text-[11px] ml-auto font-label-telemetry">viewing Chicago metrics</span>
+          </div>
+          <div class="flex items-center gap-2 p-2 bg-primary-fixed/40 border border-primary/40 rounded scroll-reveal stagger-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse shrink-0"></span>
+            <span class="font-bold text-primary">Navigation Agent (Autonomous)</span>
+            <span class="text-primary text-[11px] ml-auto font-label-telemetry">verifying /docs/fundraising_status.md</span>
+          </div>
+          <div class="flex items-center gap-2 p-2 bg-white border border-border-hairline rounded scroll-reveal stagger-4">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#B45309] shrink-0"></span>
+            <span class="font-semibold text-on-surface">Sarah Chen (Ops VP)</span>
+            <span class="text-on-surface-variant text-[11px] ml-auto font-label-telemetry">reviewing proposed diff</span>
+          </div>
+        </div>
+      </div>
+      <!-- Right: Multi-Cursor Live Document (Col 7) -->
+      <div class="lg:col-span-7 bg-white border border-border-hairline rounded-xl p-5 md:p-6 shadow-md relative scroll-reveal stagger-2">
+        <div class="flex items-center justify-between pb-3 border-b border-border-hairline font-label-code text-xs">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[16px] text-primary">groups</span>
+            <span class="font-semibold text-on-surface">ACTIVE BUFFER // 4 COLLABORATORS</span>
+          </div>
+          <span class="font-label-telemetry text-[10px] text-secondary">SYNC PING: 12ms</span>
+        </div>
+        <!-- Editor Lines with Named Cursors -->
+        <div class="py-4 space-y-2.5 font-label-telemetry text-xs text-on-surface">
+          <div class="flex gap-2 text-on-surface-variant/70"><span class="w-5 text-right select-none opacity-40">17</span><span>### Key Operating Highlights: Pilot Depots</span></div>
+          <div class="flex gap-2 text-on-surface-variant/70"><span class="w-5 text-right select-none opacity-40">18</span><span>----------------------------------------</span></div>
+          <!-- Active Line with Alex Rivera's Cursor -->
+          <div class="relative bg-surface-container/60 p-2 rounded flex items-center gap-2">
+            <span class="w-5 text-right text-on-surface select-none font-bold">19</span>
+            <span>Average incident escalation time resolved in 18 seconds.</span>
+            <span class="inline-block w-0.5 h-4 bg-primary animate-pulse"></span>
+            <!-- Cursor Badge -->
+            <span class="absolute -top-3 right-4 bg-primary text-white font-label-telemetry text-[9px] px-2 py-0.5 rounded shadow-sm">
+              Alex Rivera
+            </span>
+          </div>
+          <!-- Inline Discussion Thread with Navigation Agent Response -->
+          <div class="ml-6 p-3 bg-surface-container-low border-l-2 border-secondary rounded text-xs space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-label-code font-bold text-secondary flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">chat</span>
+                Maya Lin (Head of Strategy)
+              </span>
+              <span class="text-on-surface-variant font-label-telemetry text-[9px]">2m ago</span>
+            </div>
+            <p class="font-body-sm text-xs text-on-surface">
+              "Can we confirm if this reduction held across both graveyard and morning shifts?"
+            </p>
+            <!-- Navigation Agent Autonomous Comment -->
+            <div class="pt-2 border-t border-border-hairline flex items-start gap-2 text-primary font-body-sm text-xs bg-white/70 p-2 rounded">
+              <span class="material-symbols-outlined text-[15px] text-primary shrink-0 mt-0.5">smart_toy</span>
+              <div>
+                <strong>Navigation Agent:</strong> "Confirmed. Cross-referenced shift logs in <code>/docs/chicago_project_review.md:20–22</code>. Graveyard recorded 19.2s; morning recorded 17.1s."
+              </div>
+            </div>
+          </div>
+          <div class="flex gap-2 text-on-surface-variant/70"><span class="w-5 text-right select-none opacity-40">20</span><span>Sign-off completed by Chicago Depot Unit 04.</span></div>
+          <div class="flex gap-2 text-on-surface-variant/70"><span class="w-5 text-right select-none opacity-40">21</span><span>Audit record signed by Robert Vance.</span></div>
+        </div>
+        <div class="pt-3 border-t border-border-hairline flex items-center justify-between font-label-telemetry text-[10px] text-on-surface-variant">
+          <span>CRDT PROTOCOL: ZERO MERGE CONFLICTS</span>
+          <span class="text-secondary font-semibold">● STREAM SYNCHRONIZED</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================= -->
+<!-- 07. STREAMLINED ENCLAVE SECURITY: LIVE ACCESS CONTROL            -->
+<!-- ================================================================= -->
+<section class="w-full max-w-[1440px] mx-auto px-6 md:px-10 py-24 lg:py-28" id="enclave-security">
+  <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6 scroll-reveal">
+    <div>
+      <div class="font-label-code text-[11px] text-primary uppercase tracking-[0.14em] font-medium mb-2.5">[ ENCLAVE BOUNDARIES ]</div>
+      <h2 class="font-headline-lg text-3xl md:text-[38px] text-on-surface font-normal tracking-[-0.02em] leading-[1.12] text-balance">
+        Live access control &amp; container sandboxing.
+      </h2>
+    </div>
+    <div class="font-label-telemetry text-xs text-on-surface-variant tracking-[0.06em]">
+      SANDBOX STATUS: <span class="text-secondary font-semibold">ACTIVE</span> | READ-ONLY ISOLATION
+    </div>
+  </div>
+  <!-- Live Packet Traffic Visualizer -->
+  <div class="bg-white border border-border-hairline rounded-xl overflow-hidden shadow-sm scroll-reveal stagger-1">
+    <div class="bg-surface-container-low px-4 py-3 border-b border-border-hairline flex items-center justify-between font-label-code text-xs">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px] text-primary">security</span>
+        <span class="font-semibold text-on-surface">SANDBOX INTERCEPTOR LOG</span>
+      </div>
+      <span class="font-label-telemetry text-[10px] text-on-surface-variant">POLICY RULES ENFORCED</span>
+    </div>
+    <div class="p-5 space-y-3 font-label-telemetry text-xs">
+      <!-- Allowed Traffic Packet -->
+      <div class="p-3.5 rounded bg-secondary/5 border border-secondary/20 flex flex-col md:flex-row md:items-center justify-between gap-3 enclave-packet">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 font-label-code text-on-surface">
+            <span class="px-1.5 py-0.5 rounded bg-white border border-border-hairline font-bold text-[10px]">REQ #8109</span>
+            <span>GET /docs/client_onboarding.md</span>
+          </div>
+          <div class="text-[10px] text-on-surface-variant">
+            CALLER: agent-depot-worker • MOUNT: /mnt/repo/docs (RO)
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded bg-white border border-secondary text-secondary text-[10px] font-semibold">✓ PATH ALLOWED</span>
+          <span class="px-2 py-0.5 rounded bg-white border border-secondary text-secondary text-[10px] font-semibold">✓ TOOL VERIFIED</span>
+          <span class="px-2.5 py-1 rounded bg-secondary text-white text-[11px] font-bold">200 OK</span>
+        </div>
+      </div>
+      <!-- Blocked Security Violation Packet -->
+      <div class="p-3.5 rounded bg-error/5 border border-error/20 flex flex-col md:flex-row md:items-center justify-between gap-3 enclave-packet">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 font-label-code text-on-surface">
+            <span class="px-1.5 py-0.5 rounded bg-white border border-border-hairline font-bold text-[10px]">REQ #8110</span>
+            <span>GET /private/payroll.md</span>
+          </div>
+          <div class="text-[10px] text-on-surface-variant">
+            CALLER: agent-depot-worker • ATTEMPT: RESTRICTED ROOT TRAVERSAL
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded bg-white border border-error text-error text-[10px] font-semibold">✕ PATH RESTRICTED</span>
+          <span class="px-2 py-0.5 rounded bg-white border border-error text-error text-[10px] font-semibold">✕ SCOPE VIOLATION</span>
+          <span class="px-2.5 py-1 rounded bg-error text-white text-[11px] font-bold">403 FORBIDDEN</span>
+        </div>
+      </div>
+    </div>
+    <!-- Guardrail Perimeter Footer -->
+    <div class="bg-surface-container-low px-4 py-3 border-t border-border-hairline grid grid-cols-1 sm:grid-cols-3 gap-3 font-label-telemetry text-[11px] text-on-surface-variant">
+      <div>
+        <span class="text-on-surface font-semibold block">DIRECTORY WHITELIST:</span>
+        <span>/prompts, /docs, /sops, /notes</span>
+      </div>
+      <div>
+        <span class="text-on-surface font-semibold block">NETWORK POLICY:</span>
+        <span>Zero external egress • Sandboxed</span>
+      </div>
+      <div>
+        <span class="text-on-surface font-semibold block">AUDIT RETENTION:</span>
+        <span>Immutable write-once log stream</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================= -->
+<!-- 08. HIGH-PRECISION INSTITUTIONAL TELEMETRY (NO CLUNKY CARDS)     -->
+<!-- ================================================================= -->
+<section class="w-full bg-surface-container-low py-24 lg:py-28">
+  <div class="max-w-[1440px] mx-auto px-6 md:px-10">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12" id="telemetry-grid">
+      <div class="border-l-2 border-primary pl-5 scroll-reveal stagger-1">
+        <div class="font-display-hero tabular-nums text-5xl md:text-6xl text-primary font-normal tracking-[-0.03em] leading-none telemetry-counter" id="telemetry-metric-latency" data-counter="18" data-suffix="s">
+          18s
+        </div>
+        <div class="font-label-telemetry text-xs text-on-surface uppercase tracking-[0.08em] mt-3 font-semibold">
+          Dispatch Latency
+        </div>
+        <div class="font-body-sm text-xs md:text-[13px] text-on-surface-variant mt-1.5 leading-[1.5] text-pretty">
+          Down from 14-minute baseline lookup times.
+        </div>
+      </div>
+      <div class="border-l-2 border-border-hairline pl-5 scroll-reveal stagger-2">
+        <div class="font-display-hero tabular-nums text-5xl md:text-6xl text-on-surface font-normal tracking-[-0.03em] leading-none telemetry-counter" id="telemetry-metric-provenance" data-counter="100" data-suffix="%">
+          100%
+        </div>
+        <div class="font-label-telemetry text-xs text-on-surface uppercase tracking-[0.08em] mt-3 font-semibold">
+          Line Provenance
+        </div>
+        <div class="font-body-sm text-xs md:text-[13px] text-on-surface-variant mt-1.5 leading-[1.5] text-pretty">
+          Verbatim citations pointing to exact source code.
+        </div>
+      </div>
+      <div class="border-l-2 border-secondary pl-5 scroll-reveal stagger-3">
+        <div class="font-display-hero tabular-nums text-5xl md:text-6xl text-secondary font-normal tracking-[-0.03em] leading-none telemetry-counter" id="telemetry-metric-failures" data-counter="0" data-suffix="">
+          0
+        </div>
+        <div class="font-label-telemetry text-xs text-on-surface uppercase tracking-[0.08em] mt-3 font-semibold">
+          Handoff Failures
+        </div>
+        <div class="font-body-sm text-xs md:text-[13px] text-on-surface-variant mt-1.5 leading-[1.5] text-pretty">
+          Eliminates brittle multi-agent delegation chains.
+        </div>
+      </div>
+      <div class="border-l-2 border-border-hairline pl-5 scroll-reveal stagger-4">
+        <div class="font-display-hero tabular-nums text-5xl md:text-6xl text-on-surface font-normal tracking-[-0.03em] leading-none telemetry-counter" id="telemetry-metric-depots" data-counter="12" data-suffix="×">
+          12×
+        </div>
+        <div class="font-label-telemetry text-xs text-on-surface uppercase tracking-[0.08em] mt-3 font-semibold">
+          Container Depots
+        </div>
+        <div class="font-body-sm text-xs md:text-[13px] text-on-surface-variant mt-1.5 leading-[1.5] text-pretty">
+          Parallel isolated reasoning units active.
+        </div>
+      </div>
+    </div>
+    <div class="mt-12 pt-6 border-t border-border-hairline flex flex-col sm:flex-row justify-between items-center font-label-telemetry text-[11px] text-on-surface-variant gap-3 tracking-[0.04em] scroll-reveal">
+      <span>TELEMETRY RECORDED ACROSS PILOT HUBS // REFRESHED CONTINUOUSLY</span>
+      <span class="text-secondary font-medium">CLUSTER STATUS: NORMAL</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================= -->
+<!-- 09. EDITORIAL CLOSING STATEMENT & TACTILE ACTION                 -->
+<!-- ================================================================= -->
+<section class="w-full py-28 lg:py-36 bg-surface">
+  <div class="max-w-[1440px] mx-auto px-6 md:px-10 text-center">
+    <div class="max-w-3xl mx-auto scroll-reveal">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-surface-container border border-border-hairline font-label-code text-[11px] text-on-surface-variant uppercase tracking-[0.14em] font-medium mb-8">
+        <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+        INSTITUTIONAL CONTINUITY ENGINE
+      </div>
+      <h2 class="font-display-hero text-4xl sm:text-5xl lg:text-6xl text-on-surface leading-[1.08] tracking-[-0.03em] mb-6 font-normal text-balance">
+        Your company already has a brain.<br/>
+        <span class="italic font-light text-primary">Give it an operating environment.</span>
+      </h2>
+      <p class="font-body-md text-base sm:text-lg text-on-surface-variant leading-[1.65] mb-10 max-w-xl mx-auto text-pretty">
+        Bring your team and your documentation into a workspace where people and AI work from the exact same source of truth.
+      </p>
+      <div class="flex flex-wrap items-center justify-center gap-4 mb-14">
+        <a class="px-6 py-3.5 rounded bg-primary text-white font-label-code text-xs uppercase tracking-wider hover:bg-primary-container transition-all shadow-md flex items-center gap-2 font-medium tactile-btn" href="/workbench">
+          <span>[ OPEN CONTI-NEWTY WORKSPACE → ]</span>
+        </a>
+        <a class="px-6 py-3.5 rounded bg-white border border-border-hairline text-on-surface font-label-code text-xs uppercase tracking-wider hover:bg-surface-container transition-colors font-medium tactile-btn" href="#reasoning-moment">
+          <span>[ TEST LIVE DEMO ]</span>
+        </a>
+      </div>
+      <div class="pt-8 border-t border-border-hairline inline-flex flex-wrap items-center justify-center gap-4 font-label-telemetry text-[11px] text-on-surface-variant tracking-[0.04em]">
+        <span>CONTI-NEWTY v4.2</span>
+        <span>•</span>
+        <span class="text-secondary font-medium">DETERMINISTIC WORKSPACE ACTIVE</span>
+        <span>•</span>
+        <span>GIT COMPLIANT</span>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ================================================================= -->
+<!-- FOOTER CHROME                                                    -->
+<!-- ================================================================= -->
+<footer class="w-full bg-surface-container-low border-t border-border-hairline py-12">
+  <div class="max-w-[1440px] mx-auto px-6 md:px-10">
+    <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-8 pb-10 border-b border-border-hairline">
+      <div class="md:col-span-2 lg:col-span-5 space-y-2.5 scroll-reveal stagger-1">
+        <div class="font-headline-sm text-lg text-on-surface uppercase font-semibold tracking-wider">CONTI-NEWTY</div>
+        <p class="font-body-sm text-xs text-on-surface-variant max-w-sm leading-[1.6] text-pretty">
+          Deterministic organizational knowledge OS for high-craft leadership, logistics coordinators, and enterprise strategy teams.
+        </p>
+        <div class="pt-2 font-label-telemetry text-[10px] text-on-surface-variant flex items-center gap-2 tracking-[0.06em]">
+          <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+          <span>CLUSTER: NORTH-AMERICA-1</span>
+        </div>
+      </div>
+      <div class="md:col-span-1 lg:col-span-2 lg:col-start-7 scroll-reveal stagger-2">
+        <div class="font-label-code text-xs uppercase tracking-[0.14em] text-on-surface mb-3 font-semibold">OPERATING</div>
+        <ul class="space-y-2 font-label-code text-xs text-on-surface-variant">
+          <li><a class="hover:text-primary transition-colors" href="#hero-simulation">Workspace Kernel</a></li>
+          <li><a class="hover:text-primary transition-colors" href="#reasoning-moment">Live Traversal</a></li>
+          <li><a class="hover:text-primary transition-colors" href="#provenance-demo">Provenance Engine</a></li>
+          <li><a class="hover:text-primary transition-colors" href="#multiplayer-canvas">Multiplayer CRDT</a></li>
+        </ul>
+      </div>
+      <div class="md:col-span-1 lg:col-span-2 scroll-reveal stagger-3">
+        <div class="font-label-code text-xs uppercase tracking-[0.14em] text-on-surface mb-3 font-semibold">SECURITY</div>
+        <ul class="space-y-2 font-label-code text-xs text-on-surface-variant">
+          <li><a class="hover:text-primary transition-colors" href="#enclave-security">Enclave Sandbox</a></li>
+          <li><a class="hover:text-primary transition-colors" href="#enclave-security">POSIX Read-Only</a></li>
+          <li><a class="hover:text-primary transition-colors" href="#transformation">Git Parity Logs</a></li>
+          <li><a class="hover:text-primary transition-colors" href="#enclave-security">Zero Egress Policy</a></li>
+        </ul>
+      </div>
+      <div class="md:col-span-2 lg:col-span-3 scroll-reveal stagger-4">
+        <div class="font-label-code text-xs uppercase tracking-[0.14em] text-on-surface mb-3 font-semibold">TELEMETRY STATS</div>
+        <div class="bg-white border border-border-hairline p-3 rounded-lg space-y-1.5 font-label-telemetry text-[11px] tabular-nums">
+          <div class="flex justify-between"><span>MEAN RESOLUTION</span><span class="text-primary font-bold">18s</span></div>
+          <div class="flex justify-between"><span>LINE PARITY</span><span class="text-secondary font-bold">100%</span></div>
+          <div class="flex justify-between"><span>ACTIVE AGENTS</span><span class="font-medium">42 NODES</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 font-label-telemetry text-[11px] text-on-surface-variant scroll-reveal">
+      <div>© 2025 CONTI-NEWTY ARCHIVAL SYSTEMS. ALL RIGHTS RESERVED.</div>
+      <div class="flex items-center gap-4">
+        <a class="hover:underline" href="#">PRIVACY POLICY</a>
+        <span>•</span>
+        <a class="hover:underline" href="#">POSIX SPECIFICATION</a>
+        <span>•</span>
+        <span class="text-secondary">SYSTEM OPERATIONAL</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Hidden Application Mount Point for Test Suite Compatibility -->
+<div id="app-container" style="display: none;">
+  <div id="file-list-tree"></div>
+  <div id="active-file-title"></div>
+  <textarea id="file-editor-content"></textarea>
+  <div id="thread-list-container"></div>
+  <div id="chat-messages-container"></div>
+  <select id="workspace-select"></select>
+</div>
+
+<!-- ================================================================= -->
+<!-- HIGH-CRAFT INTERACTION SCRIPTS                                   -->
+<!-- ================================================================= -->
+<script>
+  // =================================================================
+  // 1. SCROLL-DRIVEN 7-STATE HERO ENGINE (SCROLL -> PROGRESSIVE STATES)
+  // =================================================================
+  (function initScrollHero() {
+    const heroSection = document.getElementById('hero-simulation');
+    const heroSpacer = document.getElementById('hero-scroll-spacer');
+    if (!heroSection || !heroSpacer) return;
+
+    // Elements
+    const heroProgressBar = document.getElementById('hero-progress-bar');
+    const heroStepBadge = document.getElementById('hero-step-badge');
+    const heroHeaderPath = document.getElementById('hero-header-path');
+    const heroStateBullet = document.getElementById('hero-state-bullet');
+    const heroStateLabel = document.getElementById('hero-state-label');
+    const heroStateDesc = document.getElementById('hero-state-desc');
+
+    const treeItemDocs = document.getElementById('tree-item-docs');
+    const treeSubTarget = document.getElementById('tree-sub-target');
+    const treeIconTarget = document.getElementById('tree-icon-target');
+
+    const heroDocIdlePlaceholder = document.getElementById('hero-doc-idle-placeholder');
+    const heroDocContentWrap = document.getElementById('hero-doc-content-wrap');
+    const heroDocHighlight = document.getElementById('hero-doc-highlight');
+    const heroLineKey = document.getElementById('hero-line-key');
+    const heroDocStatus = document.getElementById('hero-doc-status');
+    const heroDocLinesBadge = document.getElementById('hero-doc-lines-badge');
+
+    const stepBox1 = document.getElementById('step-box-1');
+    const stepBox2 = document.getElementById('step-box-2');
+    const stepBox3 = document.getElementById('step-box-3');
+    const stepBox4 = document.getElementById('step-box-4');
+    const stepBox5 = document.getElementById('step-box-5');
+    const stepBoxAnswer = document.getElementById('step-box-answer');
+
+    const step2Icon = document.getElementById('step-2-icon');
+    const step3Icon = document.getElementById('step-3-icon');
+    const step4Icon = document.getElementById('step-4-icon');
+    const step5Icon = document.getElementById('step-5-icon');
+
+    const heroTicks = document.querySelectorAll('#hero-ticks-bar [data-tick]');
+    const heroFooterStepNum = document.getElementById('hero-footer-step-num');
+    const heroStepBtns = document.querySelectorAll('.hero-step-btn');
+
+    const STATE_CONFIGS = {
+      1: {
+        label: "STATE 01 // IDLE / COMPANY BRAIN",
+        desc: "Conti-Newty workspace mounted • Directory listening for inbound queries",
+        path: "/company_brain/",
+        badge: "STEP 1 / 7",
+        docLinesBadge: "AWAITING INTAKE",
+        docStatus: "STANDBY • AWAITING QUERY",
+        isIdleDoc: true,
+      },
+      2: {
+        label: "STATE 02 // QUERY INTAKE",
+        desc: "Query intake acknowledged • Target: Organizational Knowledge",
+        path: "/company_brain/queries/",
+        badge: "STEP 2 / 7",
+        docLinesBadge: "TARGET RESOLVING",
+        docStatus: "LOCATING SOURCE ARTIFACT...",
+        isIdleDoc: true,
+      },
+      3: {
+        label: "STATE 03 // DIRECTORY DISCOVERY",
+        desc: "/docs/ traversed → Target identified: docs/chicago_project_review.md",
+        path: "/company_brain/docs/",
+        badge: "STEP 3 / 7",
+        docLinesBadge: "MOUNTING FILE",
+        docStatus: "OPENING ARTIFACT...",
+        isIdleDoc: false,
+      },
+      4: {
+        label: "STATE 04 // SOURCE OPENED",
+        desc: "Document viewer loaded • Inspecting verbatim lines 14–22",
+        path: "/company_brain/docs/chicago_project_review.md",
+        badge: "STEP 4 / 7",
+        docLinesBadge: "LINES 11–24 MOUNTED",
+        docStatus: "LINES 14–22 LOADED • INSPECTING",
+        isIdleDoc: false,
+      },
+      5: {
+        label: "STATE 05 // AGENT TRAVERSAL",
+        desc: "Deterministic pipeline executing • Reading and attesting verbatim SHA-256",
+        path: "/company_brain/agent/traversal/",
+        badge: "STEP 5 / 7",
+        docLinesBadge: "LINES 14–22 ACTIVE",
+        docStatus: "READ SOURCE VERBATIM (SHA-256)",
+        isIdleDoc: false,
+      },
+      6: {
+        label: "STATE 06 // PROVENANCE VERIFIED",
+        desc: "[source: docs/chicago_project_review.md:14–22] • 100% Match confirmed",
+        path: "/company_brain/provenance/verified",
+        badge: "STEP 6 / 7",
+        docLinesBadge: "PROVENANCE ATTESTED",
+        docStatus: "PROVENANCE VERIFIED • 100% MATCH",
+        isIdleDoc: false,
+      },
+      7: {
+        label: "STATE 07 // VERIFIED ANSWER",
+        desc: "Lookup latency reduced from 14m to 18s • Grounded response audit locked",
+        path: "/company_brain/answer/locked",
+        badge: "STEP 7 / 7",
+        docLinesBadge: "LINES 14–22 ATTESTED",
+        docStatus: "AUDIT LOCKED • CONTINUITY SECURED",
+        isIdleDoc: false,
+      }
+    };
+
+    let activeStep = 1;
+
+    function renderHeroState(step, updateProgressBar = true) {
+      if (step < 1) step = 1;
+      if (step > 7) step = 7;
+      activeStep = step;
+      const cfg = STATE_CONFIGS[step];
+
+      // 1. Progress Bar & Step Badge
+      if (heroStepBadge) heroStepBadge.textContent = cfg.badge;
+      if (heroFooterStepNum) heroFooterStepNum.textContent = String(step);
+      if (heroHeaderPath) heroHeaderPath.textContent = cfg.path;
+      if (heroProgressBar && updateProgressBar) {
+        const pct = Math.round((step / 7) * 100);
+        heroProgressBar.style.width = `${pct}%`;
+      }
+
+      // 2. Storytelling Banner
+      if (heroStateLabel) heroStateLabel.textContent = cfg.label;
+      if (heroStateDesc) heroStateDesc.textContent = cfg.desc;
+
+      // 3. Scrub Buttons Styling
+      heroStepBtns.forEach((btn) => {
+        const btnStep = parseInt(btn.getAttribute('data-target-step') || '0', 10);
+        if (btnStep === step) {
+          btn.classList.add('bg-primary', 'text-white', 'shadow-xs');
+          btn.classList.remove('bg-white', 'text-on-surface-variant');
+          btn.setAttribute('aria-selected', 'true');
+        } else {
+          btn.classList.remove('bg-primary', 'text-white', 'shadow-xs');
+          btn.classList.add('bg-white', 'text-on-surface-variant');
+          btn.setAttribute('aria-selected', 'false');
+        }
+      });
+
+      // 4. Bottom Ticks
+      heroTicks.forEach((tick) => {
+        const tickStep = parseInt(tick.getAttribute('data-tick') || '0', 10);
+        if (tickStep <= step) {
+          tick.classList.add('bg-primary');
+          tick.classList.remove('bg-border-hairline');
+        } else {
+          tick.classList.remove('bg-primary');
+          tick.classList.add('bg-border-hairline');
+        }
+      });
+
+      // 5. Breadcrumb & Target File Highlights
+      if (step >= 3) {
+        if (treeItemDocs) {
+          treeItemDocs.classList.add('bg-primary-fixed/60', 'text-primary', 'font-semibold');
+        }
+        if (treeSubTarget) {
+          treeSubTarget.classList.add('bg-primary', 'text-white', 'font-medium', 'shadow-xs');
+          treeSubTarget.classList.remove('text-on-surface');
+        }
+      } else {
+        if (treeItemDocs) {
+          treeItemDocs.classList.remove('bg-primary-fixed/60', 'text-primary', 'font-semibold');
+        }
+        if (treeSubTarget) {
+          treeSubTarget.classList.remove('bg-primary', 'text-white', 'font-medium', 'shadow-xs');
+          treeSubTarget.classList.add('text-on-surface');
+        }
+      }
+
+      // 5b. Hero Micro-Metrics Dynamic Activation (Req 13 & 14)
+      const heroMetricLatency = document.getElementById('hero-metric-latency');
+      const heroMetricLatencyVal = document.getElementById('hero-metric-latency-val');
+      const heroMetricAttested = document.getElementById('hero-metric-attested');
+      const heroMetricAttestedVal = document.getElementById('hero-metric-attested-val');
+
+      // Req 13: At Step 6, activate 18s Lookup Latency metric
+      if (step >= 6) {
+        if (heroMetricLatency) {
+          heroMetricLatency.classList.add('bg-primary-fixed/40', 'border-primary/30');
+          heroMetricLatency.classList.remove('border-transparent');
+        }
+        if (heroMetricLatencyVal) {
+          heroMetricLatencyVal.classList.add('text-primary', 'font-bold');
+          heroMetricLatencyVal.classList.remove('text-on-surface-variant');
+        }
+      } else {
+        if (heroMetricLatency) {
+          heroMetricLatency.classList.remove('bg-primary-fixed/40', 'border-primary/30');
+          heroMetricLatency.classList.add('border-transparent');
+        }
+        if (heroMetricLatencyVal) {
+          heroMetricLatencyVal.classList.remove('text-primary', 'font-bold');
+          heroMetricLatencyVal.classList.add('text-on-surface-variant');
+        }
+      }
+
+      // Req 14: At Step 7, activate 100% Line Attested metric
+      if (step >= 7) {
+        if (heroMetricAttested) {
+          heroMetricAttested.classList.add('bg-secondary/15', 'border-secondary/30');
+          heroMetricAttested.classList.remove('border-transparent');
+        }
+        if (heroMetricAttestedVal) {
+          heroMetricAttestedVal.classList.add('text-secondary', 'font-bold');
+          heroMetricAttestedVal.classList.remove('text-on-surface-variant');
+        }
+      } else {
+        if (heroMetricAttested) {
+          heroMetricAttested.classList.remove('bg-secondary/15', 'border-secondary/30');
+          heroMetricAttested.classList.add('border-transparent');
+        }
+        if (heroMetricAttestedVal) {
+          heroMetricAttestedVal.classList.remove('text-secondary', 'font-bold');
+          heroMetricAttestedVal.classList.add('text-on-surface-variant');
+        }
+      }
+
+      // 6. Document Viewer
+      if (cfg.isIdleDoc) {
+        if (heroDocIdlePlaceholder) heroDocIdlePlaceholder.classList.remove('hidden');
+        if (heroDocContentWrap) heroDocContentWrap.classList.add('hidden');
+      } else {
+        if (heroDocIdlePlaceholder) heroDocIdlePlaceholder.classList.add('hidden');
+        if (heroDocContentWrap) heroDocContentWrap.classList.remove('hidden');
+      }
+
+      if (heroDocStatus) heroDocStatus.textContent = cfg.docStatus;
+      if (heroDocLinesBadge) heroDocLinesBadge.textContent = cfg.docLinesBadge;
+
+      // Verbatim Lines Highlighting (State 4+)
+      if (step >= 4) {
+        if (heroDocHighlight) {
+          heroDocHighlight.classList.add('bg-[#F5EFE6]', 'border-l', 'border-primary/60');
+        }
+      } else {
+        if (heroDocHighlight) {
+          heroDocHighlight.classList.remove('bg-[#F5EFE6]', 'border-l', 'border-primary/60');
+        }
+      }
+
+      // Key Line Highlighting (State 6 and 7)
+      if (step >= 6) {
+        if (heroLineKey) {
+          heroLineKey.classList.add('bg-primary', 'text-white');
+          heroLineKey.classList.remove('text-on-surface');
+        }
+      } else {
+        if (heroLineKey) {
+          heroLineKey.classList.remove('bg-primary', 'text-white');
+          heroLineKey.classList.add('text-on-surface');
+        }
+      }
+
+      // 7. Agent Traversal Steps
+      // Step 1: Query Intake
+      if (step >= 2) {
+        if (stepBox1) {
+          stepBox1.classList.remove('opacity-40');
+          stepBox1.classList.add('border-primary/50', 'bg-primary-fixed/10');
+        }
+      } else {
+        if (stepBox1) {
+          stepBox1.classList.add('opacity-40');
+          stepBox1.classList.remove('border-primary/50', 'bg-primary-fixed/10');
+        }
+      }
+
+      // Step 2: List Directory
+      if (step >= 3) {
+        if (stepBox2) {
+          stepBox2.classList.remove('opacity-40');
+          stepBox2.classList.add('text-on-surface');
+        }
+        if (step2Icon) {
+          step2Icon.textContent = 'check_circle';
+          step2Icon.classList.remove('text-on-surface-variant');
+          step2Icon.classList.add('text-secondary');
+        }
+      } else {
+        if (stepBox2) {
+          stepBox2.classList.add('opacity-40');
+          stepBox2.classList.remove('text-on-surface');
+        }
+        if (step2Icon) {
+          step2Icon.textContent = 'radio_button_unchecked';
+          step2Icon.classList.add('text-on-surface-variant');
+          step2Icon.classList.remove('text-secondary');
+        }
+      }
+
+      // Step 3: Open Document
+      if (step >= 4) {
+        if (stepBox3) {
+          stepBox3.classList.remove('opacity-40');
+          stepBox3.classList.add('text-on-surface');
+        }
+        if (step3Icon) {
+          step3Icon.textContent = 'check_circle';
+          step3Icon.classList.remove('text-on-surface-variant');
+          step3Icon.classList.add('text-secondary');
+        }
+      } else {
+        if (stepBox3) {
+          stepBox3.classList.add('opacity-40');
+          stepBox3.classList.remove('text-on-surface');
+        }
+        if (step3Icon) {
+          step3Icon.textContent = 'radio_button_unchecked';
+          step3Icon.classList.add('text-on-surface-variant');
+          step3Icon.classList.remove('text-secondary');
+        }
+      }
+
+      // Step 4: Read Lines
+      if (step >= 5) {
+        if (stepBox4) {
+          stepBox4.classList.remove('opacity-40');
+          stepBox4.classList.add('text-on-surface');
+        }
+        if (step4Icon) {
+          step4Icon.textContent = 'check_circle';
+          step4Icon.classList.remove('text-on-surface-variant');
+          step4Icon.classList.add('text-secondary');
+        }
+      } else {
+        if (stepBox4) {
+          stepBox4.classList.add('opacity-40');
+          stepBox4.classList.remove('text-on-surface');
+        }
+        if (step4Icon) {
+          step4Icon.textContent = 'radio_button_unchecked';
+          step4Icon.classList.add('text-on-surface-variant');
+          step4Icon.classList.remove('text-secondary');
+        }
+      }
+
+      // Step 5: Attest
+      if (step >= 5) {
+        if (stepBox5) {
+          stepBox5.classList.remove('opacity-40');
+          stepBox5.classList.add('text-on-surface');
+        }
+        if (step5Icon) {
+          step5Icon.textContent = 'check_circle';
+          step5Icon.classList.remove('text-on-surface-variant');
+          step5Icon.classList.add('text-secondary');
+        }
+      } else {
+        if (stepBox5) {
+          stepBox5.classList.add('opacity-40');
+          stepBox5.classList.remove('text-on-surface');
+        }
+        if (step5Icon) {
+          step5Icon.textContent = 'radio_button_unchecked';
+          step5Icon.classList.add('text-on-surface-variant');
+          step5Icon.classList.remove('text-secondary');
+        }
+      }
+
+      // Final Verified Answer Box (State 6 & 7)
+      if (step >= 6) {
+        if (stepBoxAnswer) {
+          stepBoxAnswer.classList.remove('opacity-20', 'translate-y-2');
+          stepBoxAnswer.classList.add('opacity-100', 'translate-y-0');
+          if (step === 7) {
+            stepBoxAnswer.classList.add('ring-2', 'ring-primary/40');
+          } else {
+            stepBoxAnswer.classList.remove('ring-2', 'ring-primary/40');
+          }
+        }
+      } else {
+        if (stepBoxAnswer) {
+          stepBoxAnswer.classList.add('opacity-20', 'translate-y-2');
+          stepBoxAnswer.classList.remove('opacity-100', 'translate-y-0', 'ring-2', 'ring-primary/40');
+        }
+      }
+    }
+
+    // High-performance RAF Scroll Handler
+    let isUserManualClicking = false;
+    let clickTimer = null;
+    let rafId = null;
+
+    function handleScroll() {
+      if (isUserManualClicking) return;
+      const rect = heroSection.getBoundingClientRect();
+      const heroTop = window.scrollY + rect.top;
+      const totalScrollableDistance = heroSpacer.offsetHeight;
+      const currentScrollWithinHero = window.scrollY - heroTop;
+
+      if (currentScrollWithinHero <= 0) {
+        if (heroProgressBar) heroProgressBar.style.width = '14%';
+        renderHeroState(1, false);
+        return;
+      }
+
+      const progress = Math.min(1, Math.max(0, currentScrollWithinHero / totalScrollableDistance));
+      
+      // Continuous smooth progress bar
+      if (heroProgressBar) {
+        const continuousPct = Math.min(100, Math.max(14, Math.round(progress * 100)));
+        heroProgressBar.style.width = `${continuousPct}%`;
+      }
+
+      // Map progress smoothly into 7 states
+      const rawStep = progress * 6.999 + 1;
+      const computedStep = Math.min(7, Math.max(1, Math.floor(rawStep)));
+      if (computedStep !== activeStep) {
+        renderHeroState(computedStep, false);
+      }
+    }
+
+    function onScrollThrottled() {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        handleScroll();
+      });
+    }
+
+    // Interactive Seeking Logic (Click + Keyboard Controls)
+    function seekToStep(targetStep, smoothScroll = true) {
+      if (targetStep < 1) targetStep = 1;
+      if (targetStep > 7) targetStep = 7;
+      renderHeroState(targetStep, true);
+
+      // Compute scroll target to align scroll position seamlessly
+      const rect = heroSection.getBoundingClientRect();
+      const heroTop = window.scrollY + rect.top;
+      const totalScrollableDistance = heroSpacer.offsetHeight;
+      const targetRatio = (targetStep - 1) / 6.2;
+      const targetScrollY = heroTop + (totalScrollableDistance * targetRatio);
+
+      isUserManualClicking = true;
+      if (clickTimer) clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => {
+        isUserManualClicking = false;
+      }, 700);
+
+      if (smoothScroll) {
+        window.scrollTo({
+          top: targetScrollY,
+          behavior: 'smooth'
+        });
+      } else {
+        window.scrollTo({
+          top: targetScrollY
+        });
+      }
+    }
+
+    // Attach click listeners to hero step buttons (Req 1, 2, 3)
+    heroStepBtns.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const step = parseInt(btn.getAttribute('data-target-step') || '1', 10);
+        seekToStep(step, true);
+      });
+    });
+
+    // Keyboard navigation: Left/Right arrows and 1–7 number keys (Req 4, 5)
+    window.addEventListener('keydown', (e) => {
+      // Don't intercept when user is typing in form controls
+      if (e.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+      // Only respond when hero section is visible in viewport
+      const rect = heroSection.getBoundingClientRect();
+      const inHeroView = rect.bottom > 100 && rect.top < window.innerHeight - 100;
+      if (!inHeroView) return;
+
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        if (activeStep < 7) {
+          e.preventDefault();
+          seekToStep(activeStep + 1, true);
+        }
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        if (activeStep > 1) {
+          e.preventDefault();
+          seekToStep(activeStep - 1, true);
+        }
+      } else if (e.key >= '1' && e.key <= '7') {
+        e.preventDefault();
+        seekToStep(parseInt(e.key, 10), true);
+      }
+    });
+
+    // Check for prefers-reduced-motion
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      renderHeroState(7, true); // Jump straight to verified state
+    } else {
+      window.addEventListener('scroll', onScrollThrottled, { passive: true });
+      window.addEventListener('resize', onScrollThrottled, { passive: true });
+      renderHeroState(1, true);
+      handleScroll();
+    }
+  })();
+
+  // 2. QUERY SWITCHER IN SECTION 3 (INTERACTIVE BEAM DEMO) - PROGRESSIVE DISCLOSURE
+  const queryPills = document.querySelectorAll('.query-pill');
+  const qText = document.getElementById('interactive-query-text');
+  const qFile = document.getElementById('interactive-file-target');
+  const qLine = document.getElementById('interactive-line-target');
+  const qAns = document.getElementById('interactive-answer-text');
+  const qCit = document.getElementById('interactive-citation-label');
+  const qDocTitle = document.getElementById('interactive-doc-title');
+  const qHighlightBox = document.getElementById('interactive-highlight-box');
+  const qRangeFooter = document.getElementById('interactive-range-footer');
+
+  const queryData = {
+    chicago: {
+      query: `"What was the measured efficiency gain in our Chicago depot deployment?"`,
+      file: "chicago_project_review.md",
+      lines: "Lines 14–22 Extracted",
+      ans: `Average incident escalation time dropped from 14 minutes down to <span class="bg-[#F6EFE6] text-primary border-b border-primary/30 px-1.5 py-0.5 font-bold rounded">18 seconds</span> across 40 units.`,
+      cit: "[source: docs/chicago_project_review.md:14–22]",
+      title: "docs/chicago_project_review.md",
+      rangeFooter: "LINES 14–22 HIGHLIGHTED • 9 VERBATIM LINES"
+    },
+    coldchain: {
+      query: `"What is our verbatim escalation protocol if cold-chain drops below -4°C?"`,
+      file: "cold_chain_deviations.md",
+      lines: "Lines 42–56 Extracted",
+      ans: `Notify carrier dispatcher within <span class="bg-[#F6EFE6] text-primary border-b border-primary/30 px-1.5 py-0.5 font-bold rounded">4 minutes</span> and reroute secondary cooling to Circuit B.`,
+      cit: "[source: sops/cold_chain_deviations.md:42–56]",
+      title: "sops/cold_chain_deviations.md",
+      rangeFooter: "LINES 42–56 HIGHLIGHTED • 15 VERBATIM LINES"
+    },
+    seriesa: {
+      query: `"What is the audited net retention rate recorded in our Series A memo?"`,
+      file: "fundraising_status.md",
+      lines: "Lines 02–09 Extracted",
+      ans: `Net retention confirmed at <span class="bg-[#F6EFE6] text-primary border-b border-primary/30 px-1.5 py-0.5 font-bold rounded">98.4%</span> with 3.8x annual expansion velocity.`,
+      cit: "[source: docs/fundraising_status.md:02–09]",
+      title: "docs/fundraising_status.md",
+      rangeFooter: "LINES 02–09 HIGHLIGHTED • 8 VERBATIM LINES"
+    }
+  };
+
+  queryPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      queryPills.forEach(p => {
+        p.classList.remove('bg-primary', 'text-white');
+        p.classList.add('bg-white', 'text-on-surface-variant');
+      });
+      pill.classList.add('bg-primary', 'text-white');
+      pill.classList.remove('bg-white', 'text-on-surface-variant');
+
+      const key = pill.getAttribute('data-query');
+      const d = queryData[key];
+      if (d) {
+        if (qText) qText.textContent = d.query;
+        if (qFile) qFile.textContent = d.file;
+        if (qLine) qLine.textContent = d.lines;
+        if (qAns) qAns.innerHTML = d.ans;
+        if (qCit) qCit.textContent = d.cit;
+        if (qDocTitle) qDocTitle.textContent = d.title;
+        if (qRangeFooter) qRangeFooter.textContent = d.rangeFooter;
+
+        triggerBeamFlash();
+      }
+    });
+  });
+
+  // 3. BEAM TRIGGER BUTTON / PROOF HIGHLIGHT
+  const beamBtn = document.getElementById('trigger-beam-btn');
+  const beamIndicator = document.getElementById('beam-indicator');
+
+  function triggerBeamFlash() {
+    if (!qHighlightBox) return;
+    qHighlightBox.classList.remove('evidence-pulse');
+    void qHighlightBox.offsetWidth; // trigger reflow
+    qHighlightBox.classList.add('evidence-pulse');
+    if (beamIndicator) {
+      beamIndicator.style.opacity = '1';
+      setTimeout(() => {
+        beamIndicator.style.opacity = '0';
+      }, 500);
+    }
+  }
+
+  if (beamBtn) {
+    beamBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      triggerBeamFlash();
+    });
+  }
+
+  // 4. PROVENANCE SECTION CLICK-TO-JUMP DEMO
+  const provJumpBtn = document.getElementById('prov-jump-btn');
+  const provProofBlock = document.getElementById('prov-proof-block');
+  if (provJumpBtn && provProofBlock) {
+    provJumpBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      provProofBlock.classList.remove('evidence-pulse');
+      void provProofBlock.offsetWidth;
+      provProofBlock.classList.add('evidence-pulse');
+    });
+  }
+
+  // 5. THREE SURFACES TAB SWITCHER
+  const surfButtons = document.querySelectorAll('.surface-btn');
+  const surfPanes = document.querySelectorAll('.surface-pane');
+
+  surfButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      surfButtons.forEach(b => {
+        b.classList.remove('active-surf', 'bg-white', 'text-primary', 'font-semibold', 'shadow-xs');
+        b.classList.add('text-on-surface-variant');
+      });
+      btn.classList.add('active-surf', 'bg-white', 'text-primary', 'font-semibold', 'shadow-xs');
+      btn.classList.remove('text-on-surface-variant');
+
+      const target = btn.getAttribute('data-surf');
+      surfPanes.forEach(pane => {
+        if (pane.id === `surf-${target}`) {
+          pane.classList.remove('hidden');
+          pane.classList.add('block');
+        } else {
+          pane.classList.remove('block');
+          pane.classList.add('hidden');
+        }
+      });
+    });
+  });
+
+  // 6. SINGLE-SHOT TELEMETRY COUNTER ANIMATION (ON VIEWPORT ENTRY)
+  (function initTelemetryCounters() {
+    const telemetryElements = document.querySelectorAll('.telemetry-counter');
+    if (!telemetryElements.length) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return; // Keep initial static values
+    }
+
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          const targetNum = parseFloat(el.getAttribute('data-counter') || '0');
+          const suffix = el.getAttribute('data-suffix') || '';
+          const duration = 650;
+          const startTime = performance.now();
+
+          function updateNum(now) {
+            const progress = Math.min((now - startTime) / duration, 1);
+            // Ease out cubic
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            const current = Math.floor(easeProgress * targetNum);
+            el.textContent = `${current}${suffix}`;
+
+            if (progress < 1) {
+              requestAnimationFrame(updateNum);
+            } else {
+              el.textContent = `${targetNum}${suffix}`;
+            }
+          }
+
+          requestAnimationFrame(updateNum);
+          obs.unobserve(el);
+        }
+      });
+    }, { threshold: 0.3 });
+
+    telemetryElements.forEach(el => observer.observe(el));
+  })();
+
+  // 7. UNIFIED VIEWPORT SCROLL-REVEAL OBSERVER & NAVBAR SCROLL DYNAMICS
+  (function initScrollReveals() {
+    const revealElements = document.querySelectorAll('.scroll-reveal');
+    const topbar = document.getElementById('main-topbar');
+
+    // Subtle navbar surface change on scroll
+    if (topbar) {
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 20) {
+          topbar.classList.add('scrolled');
+        } else {
+          topbar.classList.remove('scrolled');
+        }
+      }, { passive: true });
+    }
+
+    if (!revealElements.length) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      revealElements.forEach(el => el.classList.add('revealed'));
+      return;
+    }
+
+    const revealObserver = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed');
+          obs.unobserve(entry.target); // Trigger once per page view
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+    revealElements.forEach(el => revealObserver.observe(el));
+  })();
+</script>
+
+  <!-- Client Modular JavaScript -->
+  <script src="/js/brain-view.js"></script>
+  <script src="/js/multiplayer-view.js"></script>
+  <script src="/js/apps-view.js"></script>
+  <script src="/js/changes-view.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

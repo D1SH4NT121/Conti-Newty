@@ -1,0 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400;1,6..72,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-background: var(--bg);
+  --color-foreground: var(--text-main);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text-main);
+  --color-primary: var(--brand-accent);
+  --color-primary-foreground: var(--brand-accent-fg);
+  --color-secondary: var(--surface-secondary);
+  --color-secondary-foreground: var(--text-secondary);
+  --color-muted: var(--surface-muted);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--brand-glow);
+  --color-accent-foreground: var(--text-main);
+  --color-border: var(--border-color);
+  --color-ring: var(--brand-accent);
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FFFFFF;
+  --radius: 3px;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'Newsreader', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* Sovereign Dark Theme (Rich Near-Black / Linear Precision) */
+:root,
+html,
+html.dark {
+  --bg: #0C0B0A;
+  --surface: #141311;
+  --surface-secondary: #1C1A17;
+  --surface-muted: #24221E;
+  --text-main: #F4F1EA;
+  --text-secondary: #C8C2B7;
+  --text-muted: #8E877D;
+  --text-subtle: #5C564E;
+  --border-color: rgba(244, 241, 234, 0.10);
+  --border-hairline: rgba(244, 241, 234, 0.06);
+  --brand-accent: #FFFFFF;
+  --brand-accent-fg: #0C0B0A;
+  --brand-accent-hover: #E4E4E7;
+  --brand-glow: #10B981;
+  --grid-line: rgba(244, 241, 234, 0.04);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+
+/* Required Spinning Border Keyframes */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes beam-pulse {
+  0%, 100% {
+    opacity: 0.85;
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04) translateY(-2px);
+  }
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes signal-flow {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes lineMove {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes cornerLineAnimation {
+  0% { stroke-dashoffset: 0; }
+  25% { stroke-dashoffset: 100; }
+  50% { stroke-dashoffset: 200; }
+  75% { stroke-dashoffset: 300; }
+  100% { stroke-dashoffset: 400; }
+}
+
+@keyframes gridMove {
+  0% { background-position: 0 0; }
+  100% { background-position: 50px 50px; }
+}
+
+.animate-beam-pulse {
+  animation: beam-pulse 4s ease-in-out infinite;
+}
+
+.animate-cursor-blink {
+  animation: cursor-blink 0.9s step-start infinite;
+}
+
+.animate-signal-flow {
+  animation: signal-flow 2s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 2.2s linear infinite;
+}
+

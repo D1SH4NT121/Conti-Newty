@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conti-Newty Workbench — Operational AI Workspace</title>
+  <meta name="description" content="Company Brain: Multiplayer AI Workspaces on Folder Structures (ICM Architecture)">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/css/eduba-design.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="workbench-body">
+  <div id="app-container" class="workbench-layout">
+    
+    <!-- ========================================================================
+         TOP GLOBAL EDITORIAL NAVBAR
+         ======================================================================== -->
+    <header class="top-navbar" aria-label="Global Workspace Header">
+      <div class="brand-section">
+        <a href="/" class="brand-link" title="Return to Editorial Landing">
+          <span class="brand-dot"></span>
+          <span class="brand-name">CONTI-NEWTY</span>
+          <span class="brand-badge">ICM // WORKBENCH</span>
+        </a>
+      </div>
+
+      <!-- Active Workbench Switcher -->
+      <div class="workspace-selector-area">
+        <label for="workspace-select" class="mono-label">ACTIVE DIRECTORY:</label>
+        <select id="workspace-select" class="dropdown-select" title="Switch Workbench">
+          <option value="">Loading workbenches...</option>
+        </select>
+        <button id="btn-new-workspace" class="btn btn-secondary btn-sm" title="Create New Workbench">+ New Workbench</button>
+      </div>
+
+      <!-- Live Presence Indicator -->
+      <div class="presence-stack" id="presence-bar">
+        <span class="mono-label"><span class="status-dot active"></span> LIVE COLLABORATORS:</span>
+        <div class="avatar-group" id="avatar-group">
+          <div class="avatar avatar-self" title="You (Workspace Admin)">Architect (You)</div>
+        </div>
+      </div>
+
+      <!-- Command Palette & User Profile -->
+      <div class="user-profile-section">
+        <button id="btn-command-palette-trigger" class="btn btn-secondary btn-sm" title="Search Everything (Ctrl+K or ⌘K)">
+          <span>🔍 SEARCH</span>
+          <span class="mono-tag" style="padding:1px 4px;">⌘K</span>
+        </button>
+        <button id="btn-open-org-invites" class="btn btn-secondary btn-sm" title="Manage Organization & Bulk Invites">🏢 Org & Teams</button>
+        <span id="user-display-name" class="user-tag mono-label accent">LEAD ARCHITECT</span>
+        <button id="btn-logout" class="btn btn-ghost btn-sm">Sign Out</button>
+      </div>
+    </header>
+
+    <!-- ========================================================================
+         SECONDARY NAVIGATION TABS
+         ======================================================================== -->
+    <nav class="sub-navbar" aria-label="Workspace Views">
+      <div class="tabs-container">
+        <button class="tab-btn active" data-tab="brain-tab">
+          <span>🧠</span> Company Brain (3-Part ICM Workspace)
+        </button>
+        <button class="tab-btn" data-tab="apps-tab">
+          <span>⚡</span> Small Software Cloud
+        </button>
+        <button class="tab-btn" data-tab="changes-tab">
+          <span>⚖️</span> Review & Approvals <span id="pending-changes-badge" class="badge-count">0</span>
+        </button>
+        <button class="tab-btn" data-tab="org-tab">
+          <span>🏢</span> Multi-Workbench & Members
+        </button>
+      </div>
+      <div class="mono-label" style="font-size:0.68rem; color:var(--ink-muted);">
+        STATUS: ISOLATED CLOUD CONTAINER // PERSISTENT
+      </div>
+    </nav>
+
+    <!-- ========================================================================
+         MAIN VIEWPORT
+         ======================================================================== -->
+    <main class="main-viewport">
+      
+      <!-- TAB 1: THREE-PANEL COMPANY BRAIN (HEART OF THE PRODUCT) -->
+      <section id="brain-tab" class="tab-content active">
+        <div class="workbench-three-panel">
+          
+          <!-- PANEL 1 (LEFT): Knowledge Tree Hierarchy -->
+          <div class="panel file-explorer-panel" id="panel-explorer">
+            <div class="panel-header">
+              <span class="mono-label">FOLDER HIERARCHY</span>
+              <div class="header-actions" style="display:flex; gap:0.25rem;">
+                <button id="btn-import-zip" class="btn btn-secondary btn-sm" title="Import Folder or ZIP Archive">📥 Import</button>
+                <button id="btn-export-zip" class="btn btn-secondary btn-sm" title="Download Entire Workspace as ZIP">📤 Export</button>
+                <button id="btn-create-file" class="btn btn-secondary btn-sm" title="New Document">+</button>
+              </div>
+            </div>
+            <input type="file" id="file-zip-input" accept=".zip" style="display:none;" />
+            <div class="file-list" id="file-list-tree">
+              <div class="empty-state">Loading knowledge structure...</div>
+            </div>
+            <div style="padding: 0.75rem 1rem; border-top: 1px solid var(--rule-subtle); background: var(--paper-surface); font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-muted);">
+              ICM: <code>prompts/</code> &bull; <code>docs/</code> &bull; <code>sops/</code> &bull; <code>notes/</code>
+            </div>
+          </div>
+
+          <!-- PANEL 2 (CENTER): Document Workspace -->
+          <div class="panel file-editor-panel" id="panel-editor">
+            <div class="panel-header">
+              <div class="file-header-meta">
+                <span id="active-file-title" class="file-title">Select a file from the folder tree</span>
+                <span id="file-collaborators-bar" class="file-collaborators"></span>
+              </div>
+              <div class="editor-actions">
+                <div class="view-mode-toggle">
+                  <button id="btn-mode-raw" class="btn btn-ghost btn-sm active">Raw Editor</button>
+                  <button id="btn-mode-preview" class="btn btn-ghost btn-sm">Rendered Preview</button>
+                </div>
+                <button id="btn-download-file" class="btn btn-secondary btn-sm" disabled title="Download Active Document">Download</button>
+                <button id="btn-anonymize-file" class="btn btn-secondary btn-sm" disabled title="Scrub PII and Financials for External Distribution">Anonymize & Share</button>
+                <button id="btn-save-file" class="btn btn-primary btn-sm" disabled>Save</button>
+                <button id="btn-propose-file-change" class="btn btn-secondary btn-sm" disabled>Propose Diff</button>
+              </div>
+            </div>
+
+            <!-- Concurrent Edit Warning Banner -->
+            <div id="file-conflict-banner" class="alert-banner conflict-warning" style="display:none;">
+              <span>⚠️ This file was updated by a collaborator.</span>
+              <button id="btn-reload-file-content" class="btn btn-sm btn-accent">Reload Latest</button>
+            </div>
+
+            <div class="editor-body">
+              <textarea id="file-editor-content" placeholder="Select a document or prompt from the folder hierarchy on the left..." disabled></textarea>
+              <div id="file-markdown-preview" class="markdown-rendered-view" style="display:none;"></div>
+            </div>
+          </div>
+
+          <!-- PANEL 3 (RIGHT): Embedded AI Assistant & Collaboration Context -->
+          <div class="panel ai-assistant-panel" id="panel-ai">
+            <div class="ai-panel-header">
+              <div class="ai-header-status">
+                <span class="status-dot active"></span>
+                <span class="mono-label" id="ai-status">AI HARNESS // READY</span>
+              </div>
+              <div>
+                <select id="model-provider-select" class="dropdown-select btn-sm" title="Select AI Reasoning Engine">
+                  <option value="claude">Claude Code (Anthropic)</option>
+                  <option value="gemini">Gemini CLI (Google)</option>
+                  <option value="openai">Codex / GPT-4o (OpenAI)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Active File Context Bar -->
+            <div class="ai-active-context-bar">
+              <span class="ai-context-label">WORKSPACE CONTEXT:</span>
+              <span class="ai-context-target" id="ai-context-file-indicator">Root / Whole Brain</span>
+            </div>
+
+            <!-- Context-Aware Prompt Suggestions Chips -->
+            <div class="ai-suggestions-bar">
+              <button class="suggestion-chip" onclick="window.MultiplayerView?.sendSuggestedPrompt('Summarize key policies in this active document')">📄 Summarize Active File</button>
+              <button class="suggestion-chip" onclick="window.MultiplayerView?.sendSuggestedPrompt('Audit this file for compliance and missing operational SLAs')">🛡️ Check Compliance</button>
+              <button class="suggestion-chip" onclick="window.MultiplayerView?.sendSuggestedPrompt('What did we decide about the Chicago logistics project?')">📍 Chicago Metrics</button>
+              <button class="suggestion-chip" onclick="window.MultiplayerView?.sendSuggestedPrompt('Extract all pending deliverables and action items')">📋 Action Items</button>
+            </div>
+
+            <!-- Live Chat & Provenance Feed -->
+            <div class="ai-chat-stream" id="chat-messages-container">
+              <div class="ai-message-card assistant">
+                <div class="ai-message-header">
+                  <span>SINGLE-AGENT NAVIGATION HARNESS</span>
+                  <span class="mono-tag">GROUNDED</span>
+                </div>
+                <div>
+                  Welcome to the <strong>Company Brain</strong>. Ask any question regarding your team's documents, SOPs, and prompts. The AI will autonomously navigate the directory hierarchy and stamp answers with clickable line citations.
+                </div>
+              </div>
+            </div>
+
+            <!-- Chat Input Area -->
+            <div class="ai-chat-input-area">
+              <div class="ai-input-wrapper">
+                <input type="text" id="chat-input" class="ai-input-field" placeholder="Ask about this workspace or active file..." />
+                <button id="btn-send-message" class="btn btn-primary">Query</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 2: SMALL SOFTWARE CLOUD (APP GENERATOR & SANDBOX) -->
+      <section id="apps-tab" class="tab-content">
+        <div class="apps-cloud-layout">
+          <div class="panel apps-creator-panel">
+            <div class="panel-header">
+              <span class="mono-label">SMALL SOFTWARE CLOUD</span>
+              <h3 style="font-family:var(--font-serif); font-size:1.35rem; font-weight:400;">Deploy Micro-Apps from Brain</h3>
+            </div>
+            <div class="creator-form">
+              <label for="app-prompt-input" class="mono-label">APPLICATION SPECIFICATION</label>
+              <textarea id="app-prompt-input" rows="3" placeholder="e.g. Generate an operational shipment tracking dashboard parsing client SLAs and depot review notes..."></textarea>
+              
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem;">
+                <div>
+                  <label for="app-type-select" class="mono-label">TEMPLATE:</label>
+                  <select id="app-type-select" class="dropdown-select btn-sm">
+                    <option value="dashboard">Interactive Dashboard</option>
+                    <option value="portal">Knowledge Portal</option>
+                  </select>
+                </div>
+                <button id="btn-generate-app" class="btn btn-accent">Generate & Deploy Sandbox</button>
+              </div>
+            </div>
+
+            <div class="deployed-apps-list" style="margin-top:1.5rem;">
+              <span class="mono-label">DEPLOYED INSTANCES (ISOLATED CLOUD CONTAINERS)</span>
+              <div id="deployed-apps-container" class="apps-grid">
+                <div class="empty-state">No apps deployed yet. Generate your first one above!</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Preview Sandbox Container -->
+          <div class="panel app-preview-panel">
+            <div class="panel-header">
+              <span id="preview-app-title" class="preview-title mono-label">Sandbox Live Preview</span>
+              <div class="preview-actions">
+                <a id="preview-external-link" href="#" target="_blank" class="btn btn-ghost btn-sm" style="display:none;">Open in New Tab &rarr;</a>
+              </div>
+            </div>
+            <div class="preview-body" id="preview-body-container" style="flex:1;">
+              <div class="preview-placeholder">Select or generate an app to view the live running sandbox instance.</div>
+              <iframe id="sandbox-preview-iframe" class="sandbox-iframe" style="display:none;" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: REVIEW & APPROVALS (HUMAN-IN-THE-LOOP DIFFS) -->
+      <section id="changes-tab" class="tab-content">
+        <div class="changes-review-layout">
+          <div class="panel changes-sidebar-panel">
+            <div class="panel-header">
+              <span class="mono-label">CHANGE PROPOSALS</span>
+              <h3 style="font-family:var(--font-serif); font-size:1.35rem; font-weight:400;">Pending Reviews</h3>
+            </div>
+            <div class="proposals-list" id="proposals-list-container">
+              <div class="empty-state">No pending change proposals.</div>
+            </div>
+          </div>
+
+          <div class="panel diff-viewer-panel">
+            <div class="panel-header">
+              <span id="diff-file-title" class="diff-title mono-label">Select a proposal to inspect unified line diff</span>
+              <div class="approval-actions" id="approval-actions-group" style="display:none; gap:0.5rem;">
+                <button id="btn-approve-change" class="btn btn-success btn-sm">Approve & Merge</button>
+                <button id="btn-reject-change" class="btn btn-danger btn-sm">Reject</button>
+              </div>
+            </div>
+            <div class="diff-body" id="diff-display-container">
+              <pre class="diff-view-content" id="diff-code-content">No diff loaded.</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: MULTI-WORKBENCH & MEMBERS (FOR TEAMS & AGENCIES) -->
+      <section id="org-tab" class="tab-content">
+        <div style="padding: 2.5rem; max-width: 1100px; margin: 0 auto; overflow-y: auto; width: 100%;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:1px solid var(--rule-subtle); padding-bottom:1.25rem; margin-bottom:2rem;">
+            <div>
+              <span class="mono-label accent">[ORGANIZATION_STRUCTURE]</span>
+              <h2 style="font-family:var(--font-serif); font-size:2.2rem; font-weight:400; margin-top:0.25rem;">Workbenches & Team Governance</h2>
+              <p style="color:var(--ink-secondary); font-size:0.95rem; margin-top:0.4rem;">
+                Manage isolated client workbenches, member roles, and bulk invitations under your organization umbrella.
+              </p>
+            </div>
+            <div>
+              <button id="btn-modal-bulk-invites" class="btn btn-primary">+ Bulk Invite Members</button>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:2rem;">
+            <!-- Workbenches List -->
+            <div class="panel" style="border:1px solid var(--rule-medium); border-radius:var(--radius-xs);">
+              <div class="panel-header">
+                <span class="mono-label">ORGANIZATION WORKBENCHES</span>
+                <span class="mono-tag">ISOLATED CONTAINERS</span>
+              </div>
+              <div id="org-workbenches-container" style="padding:1rem; display:flex; flex-direction:column; gap:0.75rem;">
+                <div class="empty-state">Loading workbenches...</div>
+              </div>
+            </div>
+
+            <!-- Members List -->
+            <div class="panel" style="border:1px solid var(--rule-medium); border-radius:var(--radius-xs);">
+              <div class="panel-header">
+                <span class="mono-label">ORGANIZATION MEMBERS & ROLES</span>
+                <span class="mono-tag">RBAC GUARDED</span>
+              </div>
+              <div id="org-members-container" style="padding:1rem; display:flex; flex-direction:column; gap:0.75rem;">
+                <div class="empty-state">Loading members...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 1: COMMAND PALETTE (CMD+K / CTRL+K)
+       ======================================================================== -->
+  <div id="modal-command-palette" class="modal-backdrop" style="display:none;">
+    <div class="command-palette-card" style="width: 100%;">
+      <div class="palette-input-wrap">
+        <span class="mono-label accent">⌘</span>
+        <input type="text" id="palette-search-input" class="palette-input" placeholder="Type a document name, action, or command..." autocomplete="off" />
+        <span class="mono-tag">ESC TO CLOSE</span>
+      </div>
+      <div class="palette-results" id="palette-results-list">
+        <!-- Injected dynamically via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 2: CREATE NEW WORKBENCH (6-STEP ONBOARDING)
+       ======================================================================== -->
+  <div id="modal-new-workspace" class="modal-backdrop" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <span class="mono-label accent">ONBOARDING FLOW // ARCHITECTURE</span>
+          <h3>Initialize Client or Team Workbench</h3>
+        </div>
+        <button class="btn btn-icon btn-sm btn-close-modal" data-modal="modal-new-workspace">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="new-ws-name" class="mono-label">1. WORKBENCH / CLIENT NAME</label>
+          <input type="text" id="new-ws-name" placeholder="e.g. Midwest Logistics Syndicate" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label for="new-ws-desc" class="mono-label">2. OPERATIONAL PURPOSE</label>
+          <input type="text" id="new-ws-desc" placeholder="e.g. Chicago depot SOPs and incident response" class="form-input" />
+        </div>
+        <div style="margin: 1rem 0; padding: 0.85rem; background: var(--paper-surface-muted); border: 1px solid var(--rule-subtle);">
+          <label style="display: flex; align-items: center; gap: 0.65rem; cursor: pointer;">
+            <input type="checkbox" id="new-ws-icm-template" checked />
+            <span style="font-size: 0.85rem;">
+              <strong>3. Seed founder's ICM folder template</strong> (auto-scaffolds <code>prompts/</code>, <code>docs/</code>, <code>sops/</code>, and <code>notes/</code>)
+            </span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="mono-label">4. AI REASONING MODEL</label>
+          <select id="new-ws-provider" class="dropdown-select form-input">
+            <option value="claude">Claude Code (Anthropic) — Recommended for ICM navigation</option>
+            <option value="gemini">Gemini CLI (Google) — High throughput document trees</option>
+            <option value="openai">Codex / GPT-4o (OpenAI) — General operational assistant</option>
+          </select>
+        </div>
+        <div class="mono-label" style="color: var(--ink-secondary); font-size: 0.72rem;">
+          5. Cloud Container: Isolated Docker instance initialized on workbench creation.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-close-modal" data-modal="modal-new-workspace">Cancel</button>
+        <button id="btn-confirm-create-ws" class="btn btn-primary">Create Workbench &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 3: ANONYMIZE & SHARE EXTERNAL BRIEFING
+       ======================================================================== -->
+  <div id="modal-anonymize" class="modal-backdrop" style="display:none;">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <div>
+          <span class="mono-label accent">PROVENANCE & SCRUBBING ENGINE</span>
+          <h3>Anonymize Document for External Sharing</h3>
+        </div>
+        <button class="btn btn-icon btn-sm btn-close-modal" data-modal="modal-anonymize">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.95rem; color: var(--ink-secondary); margin-bottom: 1rem;">
+          AI scrubs confidential emails, phone numbers, secret API keys, financial metrics, and specified partner names before sharing outside the organization boundary.
+        </p>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
+          <span id="anonymize-badge-count" class="mono-tag" style="color:var(--earth-burgundy);">0 redactions</span>
+          <span id="anonymize-file-label" class="mono-label">Active File</span>
+        </div>
+        <div class="form-group">
+          <label for="anonymize-custom-entities" class="mono-label">CUSTOM ENTITY / CLIENT NAMES TO REDACT (COMMA-SEPARATED)</label>
+          <input type="text" id="anonymize-custom-entities" placeholder="e.g. Acme Corp, Midwest Logistics, Project Chicago" class="form-input" />
+        </div>
+        <div class="anonymized-preview-container">
+          <label class="mono-label">SANITIZED MARKDOWN PREVIEW</label>
+          <textarea id="anonymize-preview-text" class="anonymized-textarea" readonly></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-copy-anonymized" class="btn btn-secondary">Copy Sanitized</button>
+        <button id="btn-download-anonymized" class="btn btn-accent">Download Markdown</button>
+        <button class="btn btn-ghost btn-close-modal" data-modal="modal-anonymize">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 4: BULK ORGANIZATION INVITATIONS
+       ======================================================================== -->
+  <div id="modal-bulk-invites" class="modal-backdrop" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <span class="mono-label accent">TEAM PROVISIONING</span>
+          <h3>Bulk Member Invitations</h3>
+        </div>
+        <button class="btn btn-icon btn-sm btn-close-modal" data-modal="modal-bulk-invites">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="bulk-invite-emails" class="mono-label">EMAIL ADDRESSES (COMMA OR NEWLINE SEPARATED)</label>
+          <textarea id="bulk-invite-emails" rows="4" class="form-input" placeholder="alex@company.com, maya@partner.org, dev@team.io"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="bulk-invite-role" class="mono-label">ASSIGNED ROLE</label>
+          <select id="bulk-invite-role" class="dropdown-select form-input">
+            <option value="MEMBER">Member (Read & Write permitted paths)</option>
+            <option value="VIEWER">Viewer (Read-only knowledge inspection)</option>
+            <option value="ADMIN">Admin (Full configuration & workbench creation)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-close-modal" data-modal="modal-bulk-invites">Cancel</button>
+        <button id="btn-confirm-bulk-invites" class="btn btn-primary">Send Invitations</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 5: NEW DOCUMENT / PROMPT
+       ======================================================================== -->
+  <div id="modal-new-file" class="modal-backdrop" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <span class="mono-label accent">KNOWLEDGE EXPANSION</span>
+          <h3>Create Markdown Document</h3>
+        </div>
+        <button class="btn btn-icon btn-sm btn-close-modal" data-modal="modal-new-file">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="new-file-path" class="mono-label">FILE PATH (E.G. sops/incident_response.md)</label>
+          <input type="text" id="new-file-path" placeholder="sops/incident_response.md" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label for="new-file-content" class="mono-label">INITIAL CONTENT (MARKDOWN)</label>
+          <textarea id="new-file-content" rows="6" class="form-input" placeholder="# Document Title&#10;&#10;Document content..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-close-modal" data-modal="modal-new-file">Cancel</button>
+        <button id="btn-confirm-create-file" class="btn btn-primary">Create Document</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client Modular JavaScript -->
+  <script src="/js/brain-view.js"></script>
+  <script src="/js/multiplayer-view.js"></script>
+  <script src="/js/apps-view.js"></script>
+  <script src="/js/changes-view.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/animated-components.js"></script>
+</body>
+</html>

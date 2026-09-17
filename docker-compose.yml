@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  workbench:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: conti-newty-workbench
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=file:./dev.db
+      - JWT_SECRET=production-workbench-secure-jwt-secret-key-32chars
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - workbench-data:/app/workspaces
+      - ./prisma/dev.db:/app/prisma/dev.db
+
+volumes:
+  workbench-data:
+    name: conti-newty-workspaces

@@ -1,0 +1,298 @@
+// Prisma Schema for Conti-Newty Workbench
+// Models: Organization, User, Membership, Workspace, WorkspaceMember, ReadOnlyPath, Thread, Message, AgentTask, AgentEvent, ToolExecution, AppWorkspace, AppDeployment, AppAccess, UsageLog, AuditLog
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Organization {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  users        User[]
+  workspaces   Workspace[]
+  memberships  Membership[]
+  invites      OrgInvite[]
+  joinCodes    OrgJoinCode[]
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  name          String?
+  passwordHash  String?
+  googleId      String?  @unique
+  githubId      String?  @unique
+  avatarUrl     String?
+  role          String   @default("USER") // e.g., ADMIN, USER, GUEST
+  lastWorkspaceId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  organization  Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+  memberships   Membership[]
+  workspaces    WorkspaceMember[]
+  createdThreads Thread[] @relation("CreatedBy")
+  authoredMessages Message[] @relation("Author")
+  assignedTasks AgentTask[] @relation("AssignedTo")
+  createdTasks AgentTask[] @relation("CreatedBy")
+  appAccesses AppAccess[] @relation("User")
+  grantedAccesses AppAccess[] @relation("GrantedBy")
+  usageLogs UsageLog[] @relation("UsageLogs")
+  auditLogs AuditLog[] @relation("AuditLogs")
+  invitesSent OrgInvite[] @relation("InvitedBy")
+  joinCodesCreated OrgJoinCode[] @relation("JoinCodeCreatedBy")
+  providerCredentials ProviderCredential[]
+}
+
+model Membership {
+  id            String   @id @default(uuid())
+  role          String   // e.g., OWNER, ADMIN, MEMBER
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String
+  organization  Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, organizationId])
+}
+
+model Workspace {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  organizationId  String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  members         WorkspaceMember[]
+  readOnlyPaths   ReadOnlyPath[]
+  threads         Thread[]
+  agentTasks      AgentTask[] @relation("TaskWorkspace")
+  appWorkspaces   AppWorkspace[] @relation("AppWorkspaces")
+  usageLogs       UsageLog[] @relation("UsageLogsWorkspace")
+  auditLogs       AuditLog[] @relation("AuditLogsWorkspace")
+  connectorSyncs  ConnectorSync[]
+  providerCredentials ProviderCredential[]
+  invites         OrgInvite[]
+  joinCodes       OrgJoinCode[]
+}
+
+model OrgInvite {
+  id             String       @id @default(uuid())
+  token          String       @unique
+  email          String
+  role           String       @default("MEMBER") // e.g., OWNER, ADMIN, MEMBER
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  workspaceId    String?
+  workspace      Workspace?   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy      User         @relation("InvitedBy", fields: [invitedById], references: [id])
+  invitedById    String
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime     @default(now())
+}
+
+model OrgJoinCode {
+  id             String       @id @default(uuid())
+  code           String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  workspaceId    String?
+  workspace      Workspace?   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  role           String       @default("MEMBER")
+  expiresAt      DateTime?
+  maxUses        Int?
+  useCount       Int          @default(0)
+  revoked        Boolean      @default(false)
+  createdBy      User         @relation("JoinCodeCreatedBy", fields: [createdById], references: [id])
+  createdById    String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model WorkspaceMember {
+  id            String   @id @default(uuid())
+  role          String   // e.g., OWNER, ADMIN, MEMBER
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId   String
+  joinedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, workspaceId])
+}
+
+model ReadOnlyPath {
+  id          String   @id @default(uuid())
+  path        String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Thread {
+  id          String   @id @default(uuid())
+  title       String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId String
+  createdBy   User     @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  messages    Message[]
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  content     String
+  thread      Thread   @relation(fields: [threadId], references: [id])
+  threadId    String
+  author      User     @relation("Author", fields: [authorId], references: [id])
+  authorId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AgentTask {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  status      String   // e.g., PENDING, IN_PROGRESS, COMPLETED, FAILED
+  priority    Int      @default(1) // 1=low, 2=medium, 3=high
+  assignedTo  User?    @relation("AssignedTo", fields: [assignedToId], references: [id])
+  assignedToId String?
+  createdBy   User     @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById String
+  workspace   Workspace? @relation("TaskWorkspace", fields: [workspaceId], references: [id])
+  workspaceId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  dueDate     DateTime?
+  events      AgentEvent[] @relation("AgentTaskEvents")
+  executions  ToolExecution[] @relation("ToolExecutions")
+}
+
+model AgentEvent {
+  id          String   @id @default(uuid())
+  type        String   // e.g., TASK_CREATED, TASK_UPDATED, MESSAGE_SENT
+  payload     String   // JSON stored as string
+  agentTask   AgentTask? @relation("AgentTaskEvents", fields: [agentTaskId], references: [id])
+  agentTaskId String?
+  createdAt   DateTime @default(now())
+}
+
+model ToolExecution {
+  id          String   @id @default(uuid())
+  toolName    String
+  input       String   // JSON stored as string
+  result      String?  // JSON stored as string
+  allowed     Boolean  @default(true)
+  workspaceId String
+  userId      String?
+  status      String   // e.g., SUCCESS, FAILURE
+  agentTask   AgentTask? @relation("ToolExecutions", fields: [agentTaskId], references: [id])
+  agentTaskId String?
+  createdAt   DateTime @default(now())
+}
+
+model AppWorkspace {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  workspace   Workspace @relation("AppWorkspaces", fields: [workspaceId], references: [id])
+  workspaceId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deployments AppDeployment[] @relation("AppDeployments")
+  accesses    AppAccess[] @relation("AppAccesses")
+}
+
+model AppDeployment {
+  id            String   @id @default(uuid())
+  version       String
+  status        String   // e.g., DEPLOYING, DEPLOYED, FAILED
+  appWorkspace  AppWorkspace @relation("AppDeployments", fields: [appWorkspaceId], references: [id])
+  appWorkspaceId String
+  deployedAt    DateTime @default(now())
+}
+
+model AppAccess {
+  id          String   @id @default(uuid())
+  user        User     @relation("User", fields: [userId], references: [id])
+  userId      String
+  appWorkspace AppWorkspace @relation("AppAccesses", fields: [appWorkspaceId], references: [id])
+  appWorkspaceId String
+  grantedAt   DateTime @default(now())
+  grantedBy   User     @relation("GrantedBy", fields: [grantedById], references: [id])
+  grantedById String
+}
+
+model UsageLog {
+  id          String   @id @default(uuid())
+  action      String   // e.g., LOGIN, CREATE_WORKSPACE, SEND_MESSAGE
+  user        User?    @relation("UsageLogs", fields: [userId], references: [id])
+  userId      String?
+  workspace   Workspace? @relation("UsageLogsWorkspace", fields: [workspaceId], references: [id])
+  workspaceId String?
+  metadata    String?  // JSON stored as string
+  timestamp   DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  action      String   // e.g., USER_CREATED, WORKSPACE_DELETED
+  user        User?    @relation("AuditLogs", fields: [userId], references: [id])
+  userId      String?
+  workspace   Workspace? @relation("AuditLogsWorkspace", fields: [workspaceId], references: [id])
+  workspaceId String?
+  details     String?  // JSON stored as string
+  timestamp   DateTime @default(now())
+}
+
+model ProviderCredential {
+  id           String   @id @default(uuid())
+  kind         String   // BYOK | CLI_OAUTH
+  provider     String   // claude | gemini | openai
+  label        String?
+  secretEnc    String   // AES-256-GCM encrypted payload (iv:cipher:tag hex)
+  status       String   @default("ACTIVE") // ACTIVE | REVOKED
+  user         User?    @relation(fields: [userId], references: [id])
+  userId       String?
+  workspace    Workspace? @relation(fields: [workspaceId], references: [id])
+  workspaceId  String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([provider, status])
+  @@index([workspaceId, provider])
+  @@index([userId, provider])
+}
+
+model ConnectorSync {
+  id          String   @id @default(uuid())
+  connector   String   // drive | jira | slack | tribal
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId String
+  targetPath  String
+  fileCount   Int      @default(0)
+  status      String   @default("COMPLETED") // COMPLETED | FAILED
+  detail      String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, connector])
+}

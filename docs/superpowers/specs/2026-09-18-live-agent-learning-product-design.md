@@ -46,7 +46,11 @@ control model is intentionally simple:
 - One Driver can control the agent.
 - Observers can watch the session and request control.
 - The Driver can hand off control.
-- Authorized users can interrupt with a redirect.
+- Redirect authority defaults to the current Driver; a workspace Admin or
+  Owner can force-interrupt when necessary.
+- Driver disconnect or abandonment pauses the session. An Observer is not
+  promoted automatically; an Admin or Owner must reassign the Driver.
+- Observer control requests require explicit approval from the current Driver.
 - Simultaneous human file editing is deferred.
 
 ### Realtime protocol
@@ -175,4 +179,3 @@ Existing backend and frontend builds must continue to pass at each phase.
 - BYO provider keys and self-hosting.
 - Compliance certification.
 - Broad autonomous write actions.
-

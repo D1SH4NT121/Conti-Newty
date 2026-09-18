@@ -1,6 +1,48 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api, WorkspaceFileEntry, WorkspaceSummary } from '../../lib/api-client';
+import { Sparkles } from 'lucide-react';
+
+function SeedButton({ workspaceId, onSeeded }: { workspaceId?: string; onSeeded: () => void }) {
+  const [seeding, setSeeding] = useState(false);
+  const [template, setTemplate] = useState('founder');
+
+  const handleSeed = async () => {
+    if (!workspaceId) return;
+    setSeeding(true);
+    try {
+      await api.seedWorkspace(workspaceId, template);
+      onSeeded();
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  return (
+    <div className="pt-2 space-y-2">
+      <select
+        value={template}
+        onChange={e => setTemplate(e.target.value)}
+        className="w-full px-2 py-1.5 bg-[#0c0b0a] border border-white/10 rounded text-white/60 font-mono text-[10px] focus:outline-none"
+      >
+        <option value="founder">Founder ICM — Company Brain starter</option>
+        <option value="agency-client">Agency Client Workbench</option>
+        <option value="operations-playbook">Operations Playbook</option>
+        <option value="minimal">Minimal — Blank with harness only</option>
+      </select>
+      <button
+        onClick={handleSeed}
+        disabled={seeding}
+        className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#ff7597]/20 border border-[#ff7597]/40 text-[#ff7597] font-mono text-[10px] font-bold rounded hover:bg-[#ff7597]/30 transition-colors cursor-pointer disabled:opacity-50"
+      >
+        <Sparkles size={11} />
+        {seeding ? 'SEEDING...' : 'SEED ICM TEMPLATE'}
+      </button>
+    </div>
+  );
+}
 
 interface TreeDir {
   name: string;
@@ -269,7 +311,22 @@ export const CompanyBrain: React.FC = () => {
               ))
             )
           ) : files.length === 0 ? (
-            <div className="px-4 py-3 font-mono text-xs text-muted-foreground">No documents yet.</div>
+            <div className="px-3 py-4 space-y-3">
+              <div className="font-mono text-[10px] text-white/40 uppercase font-bold tracking-wider">ICM STRUCTURE</div>
+              {[
+                { folder: 'docs/', desc: 'Policies, contracts, references' },
+                { folder: 'sops/', desc: 'Standard operating procedures' },
+                { folder: 'notes/', desc: 'Meeting notes, decisions' },
+                { folder: 'prompts/', desc: 'AI query harness & templates' },
+              ].map(f => (
+                <div key={f.folder} className="flex items-center gap-2 px-2 py-1.5 rounded border border-white/5 bg-white/3">
+                  <span className="font-mono text-xs text-white/30">📁</span>
+                  <span className="font-mono text-xs text-white/50 font-semibold">{f.folder}</span>
+                  <span className="font-mono text-[10px] text-white/25 truncate">{f.desc}</span>
+                </div>
+              ))}
+              <SeedButton workspaceId={workspace?.id} onSeeded={loadFiles} />
+            </div>
           ) : (
             <>
               {rootFiles.map((f) => {

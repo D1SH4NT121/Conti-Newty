@@ -1,151 +1,201 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
-import { WorkspaceSummary } from '../../lib/api-client';
-import { Bot, Sparkles, CheckCircle2, Shield, Cpu, ArrowRight, Play, Terminal } from 'lucide-react';
+import { api, WorkspaceSummary } from '../../lib/api-client';
+import { getSocket } from '../../lib/socket';
+import { ArrowRight, Play, Users, Clock, RefreshCw } from 'lucide-react';
+
+interface Task {
+  id: string;
+  title: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const STATUS_STYLES: Record<string, { dot: string; badge: string; label: string }> = {
+  COMPLETED: { dot: 'bg-emerald-400', badge: 'bg-emerald-950/60 text-emerald-400 border-emerald-500/40', label: 'COMPLETED' },
+  RUNNING:   { dot: 'bg-amber-400 animate-pulse', badge: 'bg-amber-950/60 text-amber-300 border-amber-500/40 animate-pulse', label: 'RUNNING' },
+  PENDING:   { dot: 'bg-amber-400 animate-pulse', badge: 'bg-amber-950/60 text-amber-300 border-amber-500/40', label: 'PENDING' },
+  FAILED:    { dot: 'bg-red-400', badge: 'bg-red-950/60 text-red-400 border-red-500/40', label: 'FAILED' },
+  CANCELLED: { dot: 'bg-white/20', badge: 'bg-white/5 text-white/40 border-white/10', label: 'CANCELLED' },
+};
 
 export const Agents: React.FC = () => {
   const { workspace } = useOutletContext<{ workspace: WorkspaceSummary }>();
   const navigate = useNavigate();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [prompt, setPrompt] = useState('');
+  const [running, setRunning] = useState(false);
 
-  const agents = [
-    {
-      id: 'agent-research',
-      name: 'Deep Research Agent',
-      role: 'Filesystem Traversal & Synthesis',
-      model: 'Antigravity Reasoning v2 / GPT-4o',
-      status: 'active',
-      description: 'Navigates markdown hierarchies, extracts exact verbatim line spans, and produces grounded citations.',
-      stats: { tasksCompleted: 142, avgConfidence: '99.4%', latency: '1.2s' },
-      suggestedQuery: 'Perform deep research across all SOPs and summarize operational protocols.'
-    },
-    {
-      id: 'agent-scribe',
-      name: 'Institutional Scribe',
-      role: 'Documentation & Living Updates',
-      model: 'Claude 3.5 Sonnet / Antigravity Native',
-      status: 'active',
-      description: 'Monitors workspace changes, proposes atomic documentation patches, and records institutional memory.',
-      stats: { tasksCompleted: 89, avgConfidence: '98.8%', latency: '0.8s' },
-      suggestedQuery: 'Draft a new incident response runbook template for production database anomalies.'
-    },
-    {
-      id: 'agent-validator',
-      name: 'Cryptographic Provenance Validator',
-      role: 'SHA-256 Grounding & Integrity',
-      model: 'Deterministic Engine (Native)',
-      status: 'active',
-      description: 'Computes cryptographic hashes over verbatim file coordinates to guarantee zero‑hallucination compliance.',
-      stats: { tasksCompleted: 310, avgConfidence: '100%', latency: '4ms' },
-      suggestedQuery: 'Verify SHA-256 coordinate integrity hashes across all workspace files.'
-    },
-    {
-      id: 'agent-builder',
-      name: 'Software Generator',
-      role: 'Sandboxed Micro‑App Creation',
-      model: 'Antigravity CodeRunner',
-      status: 'ready',
-      description: 'Synthesizes interactive operational tools and executes them within sandboxed WebAssembly/Node VM.',
-      stats: { tasksCompleted: 24, avgConfidence: '97.2%', latency: '2.4s' },
-      suggestedQuery: 'Generate an interactive JSON token decoder utility.'
-    }
-  ];
-
-  const handleLaunchMission = (query: string) => {
-    navigate(`/w/${workspace.id}/ask?q=${encodeURIComponent(query)}`);
+  const loadTasks = () => {
+    if (!workspace?.id) return;
+    api.listTasks(workspace.id, 20)
+      .then(setTasks)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   };
 
+  useEffect(() => {
+    loadTasks();
+  }, [workspace?.id]);
+
+  // Live updates via socket
+  useEffect(() => {
+    if (!workspace?.id) return;
+    const socket = getSocket();
+
+    const handleCreated = (data: Task) => {
+      setTasks(prev => [data, ...prev.slice(0, 19)]);
+    };
+    const handleUpdated = (data: { id: string; status: string }) => {
+      setTasks(prev => prev.map(t => t.id === data.id ? { ...t, status: data.status } : t));
+    };
+
+    socket.on('task.created', handleCreated);
+    socket.on('task.updated', handleUpdated);
+    return () => {
+      socket.off('task.created', handleCreated);
+      socket.off('task.updated', handleUpdated);
+    };
+  }, [workspace?.id]);
+
+  const handleRunTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prompt.trim()) return;
+    setRunning(true);
+    try {
+      navigate(`/w/${workspace.id}/ask?q=${encodeURIComponent(prompt.trim())}`);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const handleJoin = (task: Task) => {
+    navigate(`/w/${workspace.id}/ask?task=${task.id}`);
+  };
+
+  const activeTasks = tasks.filter(t => t.status === 'RUNNING' || t.status === 'PENDING');
+  const pastTasks = tasks.filter(t => t.status !== 'RUNNING' && t.status !== 'PENDING');
+
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
-      <div className="mb-8 border-b border-border pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-xs text-primary font-bold uppercase tracking-wider mb-1">
-            Autonomous Agent Roster
-          </p>
-          <h1 className="font-serif text-3xl font-light text-foreground">
-            Workspace Agents
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Configured autonomous agents operating within <strong className="text-foreground">{workspace?.name}</strong>. Each agent has bounded filesystem access.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate(`/w/${workspace.id}/ask`)}
-            className="flex items-center gap-2 px-4 py-2 rounded bg-primary text-primary-foreground font-mono text-xs font-semibold hover:opacity-90 transition-opacity"
-          >
-            <Sparkles size={14} />
-            <span>Open Reasoning Engine</span>
-          </button>
-        </div>
+    <div className="max-w-4xl mx-auto py-8 px-4 space-y-10 animate-fade-in text-foreground">
+      <div className="border-b border-white/10 pb-6">
+        <p className="font-mono text-[10px] text-[#ff7597] font-bold tracking-widest uppercase mb-1">
+          MULTIPLAYER AGENT SESSIONS
+        </p>
+        <h1 className="font-serif text-3xl font-light text-white">Agents</h1>
+        <p className="text-sm text-white/50 mt-1">
+          Run tasks, watch them live, and share sessions with teammates.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {agents.map(agent => (
-          <div
-            key={agent.id}
-            className="p-6 rounded border border-border bg-card hover:border-foreground/40 transition-colors flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded bg-background border border-border flex items-center justify-center text-foreground">
-                    <Bot size={20} className="text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="font-serif text-lg font-medium text-foreground">
-                      {agent.name}
-                    </h2>
-                    <div className="text-xs text-muted-foreground">
-                      {agent.role}
+      {/* Quick run */}
+      <form onSubmit={handleRunTask} className="flex gap-2">
+        <input
+          type="text"
+          value={prompt}
+          onChange={e => setPrompt(e.target.value)}
+          placeholder="Describe a task for the agent..."
+          className="flex-1 px-4 py-3 bg-[#141312] border border-white/12 text-white font-serif text-base focus:outline-none focus:border-white/40 transition-colors placeholder-white/30 rounded-lg"
+        />
+        <button
+          type="submit"
+          disabled={running || !prompt.trim()}
+          className="font-mono text-xs font-bold tracking-widest px-6 py-3 bg-white text-black hover:bg-emerald-400 hover:text-black transition-colors rounded-lg disabled:opacity-40 flex items-center gap-2 cursor-pointer"
+        >
+          <Play size={13} className="fill-current" />
+          RUN
+        </button>
+      </form>
+
+      {/* Active tasks */}
+      {activeTasks.length > 0 && (
+        <section>
+          <div className="font-mono text-[10px] font-bold text-white/50 tracking-widest uppercase mb-3">
+            ACTIVE NOW — {activeTasks.length}
+          </div>
+          <div className="space-y-3">
+            {activeTasks.map(task => {
+              const s = STATUS_STYLES[task.status] ?? STATUS_STYLES.CANCELLED;
+              return (
+                <div key={task.id} className="border border-amber-500/30 bg-amber-950/10 rounded-xl p-5 flex items-center gap-4">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${s.dot}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-white truncate">{task.title}</div>
+                    <div className="font-mono text-[10px] text-white/40 mt-0.5 flex items-center gap-1">
+                      <Clock size={9} />
+                      {new Date(task.createdAt).toLocaleTimeString()}
                     </div>
                   </div>
+                  <button
+                    onClick={() => handleJoin(task)}
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-400 text-black font-mono text-xs font-bold rounded-lg hover:bg-amber-300 transition-colors cursor-pointer shrink-0"
+                  >
+                    <Users size={12} />
+                    JOIN LIVE
+                  </button>
                 </div>
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-semibold border border-emerald-500/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>{agent.status}</span>
-                </div>
-              </div>
-
-              <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                {agent.description}
-              </p>
-
-              <div className="flex items-center gap-2 mb-4 p-2 rounded bg-background border border-border text-xs font-mono text-muted-foreground">
-                <Cpu size={12} className="text-foreground shrink-0" />
-                <span className="truncate">Engine: <strong className="text-foreground">{agent.model}</strong></span>
-              </div>
-            </div>
-
-            <div>
-              <div className="grid grid-cols-3 gap-2 py-3 border-t border-border text-center font-mono text-xs text-muted-foreground">
-                <div>
-                  <div className="text-[10px] text-muted-foreground">TASKS</div>
-                  <div className="text-sm font-bold text-foreground">{agent.stats.tasksCompleted}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-muted-foreground">ACCURACY</div>
-                  <div className="text-sm font-bold text-foreground">{agent.stats.avgConfidence}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-muted-foreground">LATENCY</div>
-                  <div className="text-sm font-bold text-foreground">{agent.stats.latency}</div>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-border">
-                <button
-                  onClick={() => handleLaunchMission(agent.suggestedQuery)}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded bg-secondary hover:bg-secondary/80 text-foreground font-mono text-xs transition-colors border border-border"
-                >
-                  <Play size={12} className="text-primary fill-primary" />
-                  <span>Launch Mission Prompt</span>
-                  <ArrowRight size={12} className="ml-auto text-muted-foreground" />
-                </button>
-              </div>
-            </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </section>
+      )}
+
+      {/* Task history */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-mono text-[10px] font-bold text-white/50 tracking-widest uppercase">
+            TASK HISTORY
+          </span>
+          <button onClick={loadTasks} className="text-white/30 hover:text-white transition-colors cursor-pointer">
+            <RefreshCw size={12} />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="font-mono text-xs text-white/30 animate-pulse py-8 text-center">LOADING...</div>
+        ) : pastTasks.length === 0 ? (
+          <div className="border border-white/8 bg-[#141312] rounded-xl p-12 text-center">
+            <div className="font-mono text-[10px] text-white/30 uppercase mb-4">No tasks yet</div>
+            <button
+              onClick={() => navigate(`/w/${workspace.id}/ask`)}
+              className="font-mono text-[10px] font-bold px-5 py-2.5 border border-white/20 text-white/70 hover:border-white hover:text-white transition-colors uppercase rounded-md cursor-pointer"
+            >
+              RUN FIRST TASK →
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {pastTasks.map(task => {
+              const s = STATUS_STYLES[task.status] ?? STATUS_STYLES.CANCELLED;
+              return (
+                <button
+                  key={task.id}
+                  onClick={() => handleJoin(task)}
+                  className="w-full flex items-center gap-4 bg-[#141312] border border-white/8 hover:border-white/20 hover:bg-[#181716] transition-all px-5 py-4 text-left group rounded-xl cursor-pointer"
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-white group-hover:text-accent transition-colors truncate">
+                      {task.title}
+                    </div>
+                    <div className="font-mono text-[10px] text-white/40 mt-0.5 flex items-center gap-1">
+                      <Clock size={9} />
+                      {new Date(task.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                  <span className={`font-mono text-[10px] px-2 py-0.5 rounded border font-bold uppercase shrink-0 ${s.badge}`}>
+                    {s.label}
+                  </span>
+                  <ArrowRight size={14} className="text-white/20 group-hover:text-white transition-colors shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 };
+export default Agents;

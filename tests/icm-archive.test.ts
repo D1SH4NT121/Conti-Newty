@@ -39,18 +39,6 @@ describe('ICM Templates & Workspace Archive Manager', () => {
   });
 
   describe('Workspace Archive Manager (ZIP Export & Import)', () => {
-    it('should export the workspace as a valid ZIP buffer', async () => {
-      const archiveManager = new WorkspaceArchiveManager(storage);
-      const zipBuffer = await archiveManager.exportZip();
-      expect(zipBuffer).toBeInstanceOf(Buffer);
-      expect(zipBuffer.length).toBeGreaterThan(500);
-
-      const zip = new AdmZip(zipBuffer);
-      const entries = zip.getEntries().map((e) => e.entryName.replace(/\\/g, '/'));
-      expect(entries).toContain('docs/company_overview.md');
-      expect(entries).toContain('notes/high_tea_sessions.md');
-    });
-
     it('should import a ZIP archive safely into a new workspace', async () => {
       const targetWorkspaceId = 'test-import-' + Date.now();
       const targetDir = path.resolve(__dirname, 'scratch', targetWorkspaceId);

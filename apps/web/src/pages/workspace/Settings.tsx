@@ -421,6 +421,19 @@ export const Settings: React.FC = () => {
             Supply your own AI provider API keys. Your key is encrypted with AES-256-GCM and never stored in plain text.
           </p>
 
+          {/* No key warning */}
+          {credentials.length === 0 && (
+            <div className="flex items-start gap-3 p-4 mb-4 rounded-lg bg-amber-950/30 border border-amber-500/40">
+              <KeyRound size={16} className="text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-mono text-xs font-bold text-amber-300 mb-1">No API key configured</div>
+                <p className="text-xs text-white/60 leading-relaxed">
+                  The Ask agent cannot run without an AI provider key. Add a Claude, Gemini, or OpenAI key below — it's AES-256 encrypted and only used for your requests.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Existing keys */}
           {credentials.length > 0 && (
             <div className="space-y-2 mb-4">
@@ -487,6 +500,7 @@ export const Settings: React.FC = () => {
                     provider: byokProvider,
                     secret: byokKey.trim(),
                     label: byokLabel.trim() || undefined,
+                    workspaceId: workspace?.id,
                   });
                   setCredentials(prev => [{ ...newCred, kind: 'BYOK', createdAt: new Date().toISOString() }, ...prev]);
                   setByokKey('');

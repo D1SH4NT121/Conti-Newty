@@ -49,12 +49,29 @@ export interface VerifiedCitation {
   snippet: string;
 }
 
+export interface AgentConfig {
+  role: string;
+  provider: 'claude' | 'openai' | 'gemini';
+  systemPrompt?: string;
+  /** Explicit model override for this relay step (e.g. "gpt-4o-mini"). If omitted, cost routing applies automatically. */
+  model?: string;
+}
+
+export interface AgentTurn {
+  agentRole: string;
+  provider: string;
+  answer: string;
+  citations: Array<{ filePath: string; startLine?: number; endLine?: number; snippet?: string; contentHash?: string }>;
+  verifiedCitations: VerifiedCitation[];
+}
+
 export interface TaskResponse {
   taskId: string;
   status: 'COMPLETED' | 'FAILED' | 'PENDING' | 'RUNNING' | 'CANCELLED';
   answer?: string;
   citations?: Array<{ filePath: string; startLine?: number; endLine?: number; snippet?: string; contentHash?: string }>;
   verifiedCitations?: VerifiedCitation[];
+  turns?: AgentTurn[];
 }
 
 export interface TaskEvent {
@@ -296,7 +313,7 @@ class ApiClient {
       return [];
     }
     const data = await res.json();
-    return data.members || [];
+    return Array.isArray(data) ? data : (data.members || []);
   }
 
   async createWorkspace(params: { name: string; description?: string; template?: string; organizationId?: string }): Promise<WorkspaceSummary> {
@@ -388,11 +405,51 @@ class ApiClient {
     return res.json();
   }
 
-  async createTask(workspaceId: string, prompt: string, title?: string): Promise<TaskResponse> {
+  async seedWorkspace(workspaceId: string, template = 'founder'): Promise<{ success: boolean; fileCount: number; files: string[] }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/seed`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ template }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Seed failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async listApps(workspaceId: string): Promise<Array<{ id: string; name: string; slug: string | null; description: string | null; previewUrl: string; shareUrl: string | null; createdAt: string; deployments: Array<{ status: string }> }>> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/apps`, { headers: this.getHeaders() });
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  async generateApp(workspaceId: string, params: { prompt: string; appType?: string; appName?: string }): Promise<{ appWorkspaceId: string; name: string; slug: string; previewUrl: string; shareUrl: string; status: string }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/apps`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'App generation failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async listTasks(workspaceId: string, limit = 10): Promise<Array<{ id: string; title: string; status: string; createdAt: string; updatedAt: string }>> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/tasks?limit=${limit}`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  async createTask(workspaceId: string, prompt: string, title?: string, agents?: AgentConfig[]): Promise<TaskResponse> {
     const res = await fetch(`/api/workspaces/${workspaceId}/tasks`, {
       method: 'POST',
       headers: this.getHeaders(),
-      body: JSON.stringify({ prompt, title }),
+      body: JSON.stringify({ prompt, title, agents }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Task execution failed' }));
@@ -600,6 +657,57 @@ class ApiClient {
     return res.json();
   }
 
+  // ── Drive (Picker-based) ──────────────────────────────────────────────────
+
+  async getDriveAuthUrl(workspaceId: string): Promise<{ url: string }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/drive/auth-url`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to get Drive auth URL' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async connectDriveFiles(
+    workspaceId: string,
+    params: { code: string; pickerFiles: Array<{ id: string; name: string; mimeType: string }>; targetDir?: string }
+  ): Promise<{ connected: any[]; errors: any[] }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/drive/connect`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Drive connect failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async syncDriveConnections(workspaceId: string): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/drive/sync`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Drive sync failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async listDriveConnections(workspaceId: string): Promise<any[]> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/drive/connections`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  // ── Legacy Jira / Slack / Tribal (unchanged) ─────────────────────────────
+
   async syncTribalMemory(workspaceId: string, entries: Array<{ title: string; content: string; author?: string; tags?: string[] }>): Promise<any> {
     const res = await fetch(`/api/workspaces/${workspaceId}/connectors/tribal/sync`, {
       method: 'POST',
@@ -608,19 +716,6 @@ class ApiClient {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Tribal memory sync failed' }));
-      throw new Error(err.error || `HTTP ${res.status}`);
-    }
-    return res.json();
-  }
-
-  async syncDrive(workspaceId: string, params: { accessToken: string; folderId?: string }): Promise<any> {
-    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/drive/sync`, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify(params),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Drive sync failed' }));
       throw new Error(err.error || `HTTP ${res.status}`);
     }
     return res.json();

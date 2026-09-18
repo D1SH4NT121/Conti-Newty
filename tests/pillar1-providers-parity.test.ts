@@ -2,6 +2,7 @@ import { ProviderFactory } from '../src/modules/brain/providers/provider-factory
 import { ClaudeProvider } from '../src/modules/brain/providers/claude-provider';
 import { OpenAIProvider } from '../src/modules/brain/providers/openai-provider';
 import { GeminiProvider } from '../src/modules/brain/providers/gemini-provider';
+import { BedrockProvider } from '../src/modules/brain/providers/bedrock-provider';
 
 describe('Pillar 1.3: Real Provider Contract Parity & Simulation Guard', () => {
   const originalEnv = process.env.NODE_ENV;
@@ -24,6 +25,7 @@ describe('Pillar 1.3: Real Provider Contract Parity & Simulation Guard', () => {
     const claude = new ClaudeProvider();
     const openai = new OpenAIProvider();
     const gemini = new GeminiProvider();
+    const bedrock = new BedrockProvider();
 
     await expect(
       claude.complete({ messages: [{ role: 'user', content: 'hello' }] })
@@ -35,6 +37,10 @@ describe('Pillar 1.3: Real Provider Contract Parity & Simulation Guard', () => {
 
     await expect(
       gemini.complete({ messages: [{ role: 'user', content: 'hello' }] })
+    ).rejects.toThrow(/Unconfigured provider: Valid API key is required/);
+
+    await expect(
+      bedrock.complete({ messages: [{ role: 'user', content: 'hello' }] })
     ).rejects.toThrow(/Unconfigured provider: Valid API key is required/);
   });
 
@@ -55,7 +61,8 @@ describe('Pillar 1.3: Real Provider Contract Parity & Simulation Guard', () => {
     const providers = [
       new ClaudeProvider(),
       new OpenAIProvider(),
-      new GeminiProvider()
+      new GeminiProvider(),
+      new BedrockProvider()
     ];
 
     for (const provider of providers) {
@@ -75,8 +82,8 @@ describe('Pillar 1.3: Real Provider Contract Parity & Simulation Guard', () => {
 
   it('4. ProviderFactory instantiates all available providers and lists metadata correctly', () => {
     const list = ProviderFactory.getAvailableProviders();
-    expect(list).toHaveLength(3);
-    expect(list.map((p) => p.id)).toEqual(['claude', 'gemini', 'openai']);
+    expect(list).toHaveLength(4);
+    expect(list.map((p) => p.id)).toEqual(['claude', 'gemini', 'openai', 'bedrock']);
 
     const claude = ProviderFactory.createProvider('claude');
     expect(claude.providerType).toBe('claude');
@@ -86,5 +93,8 @@ describe('Pillar 1.3: Real Provider Contract Parity & Simulation Guard', () => {
 
     const gemini = ProviderFactory.createProvider('gemini');
     expect(gemini.providerType).toBe('gemini');
+
+    const bedrock = ProviderFactory.createProvider('bedrock');
+    expect(bedrock.providerType).toBe('bedrock');
   });
 });

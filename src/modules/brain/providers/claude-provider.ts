@@ -16,6 +16,7 @@ export class ClaudeProvider implements LLMProvider {
     messages: AIMessage[];
     systemPrompt?: string;
     tools?: any[];
+    model?: string;
   }): Promise<AIResponse> {
     if (this.client) {
       const clientAny = this.client as any;
@@ -26,7 +27,7 @@ export class ClaudeProvider implements LLMProvider {
         }));
 
         const response: any = await clientAny.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
+          model: params.model || 'claude-3-5-sonnet-20241022',
           max_tokens: 4096,
           system: params.systemPrompt,
           messages: anthropicMessages,

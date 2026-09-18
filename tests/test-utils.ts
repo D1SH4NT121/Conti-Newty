@@ -13,6 +13,7 @@ export async function clearDatabase() {
   await prisma.usageLog.deleteMany({});
   await prisma.auditLog.deleteMany({});
   await prisma.connectorSync.deleteMany({});
+  await prisma.sourceConnection.deleteMany({});
   await prisma.providerCredential.deleteMany({});
   await prisma.workspaceMember.deleteMany({});
   await prisma.orgInvite.deleteMany({});

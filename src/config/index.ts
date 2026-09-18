@@ -16,6 +16,7 @@ interface Config {
   googleClientSecret: string;
   githubClientId: string;
   githubClientSecret: string;
+  allowedOrigins: string[];
 }
 
 const config: Config = {
@@ -29,7 +30,10 @@ const config: Config = {
   googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
   githubClientId: process.env.GITHUB_CLIENT_ID || '',
-  githubClientSecret: process.env.GITHUB_CLIENT_SECRET || ''
+  githubClientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+  allowedOrigins: process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',') 
+    : (process.env.NODE_ENV !== 'production' ? ['http://localhost:5173'] : [])
 };
 
 export { config };

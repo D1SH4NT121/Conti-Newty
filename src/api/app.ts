@@ -15,6 +15,7 @@ import { createGithubRouter } from './github/github-router';
 import { createCredentialRouter } from './credentials/credential-router';
 import { createConnectorRouter } from './connectors/connector-router';
 import { createIcmRouter } from './icm/icm-router';
+import { config } from '../config';
 
 export function createApp(customStorageBaseDir?: string, customSandboxRunner?: SandboxRunner): Express {
   const app = express();
@@ -33,7 +34,10 @@ export function createApp(customStorageBaseDir?: string, customSandboxRunner?: S
 
   // CORS
   app.use((req: Request, res: Response, next: NextFunction) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin;
+    if (origin && config.allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+    }
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-id');
     if (req.method === 'OPTIONS') {
@@ -67,6 +71,33 @@ export function createApp(customStorageBaseDir?: string, customSandboxRunner?: S
   app.use('/api/credentials', createCredentialRouter());
   app.use('/api/workspaces/:id/connectors', createConnectorRouter(storageResolver));
   app.use('/api/icm', createIcmRouter(storageResolver));
+
+  // Public shareable app route — no auth required
+  app.get('/apps/:slug', async (req: Request, res: Response) => {
+    try {
+      const { prisma } = await import('../db/client');
+      const app_ws = await prisma.appWorkspace.findUnique({
+        where: { slug: req.params.slug },
+        include: { deployments: { orderBy: { deployedAt: 'desc' }, take: 1 } }
+      });
+      if (!app_ws || !app_ws.deployments[0] || app_ws.deployments[0].status !== 'DEPLOYED') {
+        return res.status(404).send('<h1>App not found or not deployed</h1>');
+      }
+      const fs = await import('fs');
+      const pathMod = await import('path');
+      const storage = storageResolver(app_ws.workspaceId);
+      const appDir = pathMod.join(storage.workspaceRoot, 'apps', app_ws.id);
+      const indexPath = pathMod.join(appDir, 'index.html');
+      if (!fs.existsSync(indexPath)) {
+        return res.status(404).send('<h1>App files not found</h1>');
+      }
+      res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline' 'self'; style-src 'unsafe-inline' 'self'; img-src 'self' data:");
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return fs.createReadStream(indexPath).pipe(res);
+    } catch (err: any) {
+      return res.status(500).send('<h1>Error loading app</h1>');
+    }
+  });
 
   // SPA fallback for HTML5 history API routes (Landing, /auth, /enter, /onboarding, /w/*)
   if (require('fs').existsSync(clientDistDir)) {

@@ -50,6 +50,8 @@ model User {
   invitesSent OrgInvite[] @relation("InvitedBy")
   joinCodesCreated OrgJoinCode[] @relation("JoinCodeCreatedBy")
   providerCredentials ProviderCredential[]
+  proposedChanges ProposedChange[] @relation("ProposedChanges")
+  reviewedChanges ProposedChange[] @relation("ReviewedChanges")
 }
 
 model Membership {
@@ -84,6 +86,7 @@ model Workspace {
   providerCredentials ProviderCredential[]
   invites         OrgInvite[]
   joinCodes       OrgJoinCode[]
+  proposedChanges ProposedChange[]
 }
 
 model OrgInvite {
@@ -212,6 +215,7 @@ model AppWorkspace {
   id          String   @id @default(uuid())
   name        String
   description String?
+  slug        String?  @unique
   workspace   Workspace @relation("AppWorkspaces", fields: [workspaceId], references: [id])
   workspaceId String
   createdAt   DateTime @default(now())
@@ -295,4 +299,48 @@ model ConnectorSync {
   createdAt   DateTime @default(now())
 
   @@index([workspaceId, connector])
+}
+
+/// Persistent record of a single Drive file (or folder) connected to a workspace Brain path.
+/// Tokens are stored AES-256-GCM encrypted (same vault as ProviderCredential).
+model SourceConnection {
+  id              String    @id @default(uuid())
+  provider        String    // "drive"
+  externalFileId  String    // Google Drive file/folder ID
+  externalName    String    // Display name at time of connection
+  mimeType        String?   // Google mimeType of the file
+  brainPath       String    // Relative path written into the workspace Brain
+  workspaceId     String
+  userId          String
+  accessTokenEnc  String    // AES-256-GCM encrypted access token
+  refreshTokenEnc String?   // AES-256-GCM encrypted refresh token (null if not issued)
+  lastSyncedAt    DateTime?
+  remoteModifiedAt DateTime? // Last known modifiedTime from Drive API
+  status          String    @default("active") // active | reconnect_required
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([workspaceId, provider])
+  @@index([externalFileId, workspaceId])
+}
+
+model ProposedChange {
+  id              String   @id @default(uuid())
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId     String
+  filePath        String
+  proposedBy      String
+  user            User     @relation("ProposedChanges", fields: [proposedBy], references: [id])
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  originalContent String
+  proposedContent String
+  diff            String
+  description     String?
+  createdAt       DateTime @default(now())
+  reviewedBy      String?
+  reviewer        User?    @relation("ReviewedChanges", fields: [reviewedBy], references: [id])
+  reviewedAt      DateTime?
+  rejectionReason String?
+
+  @@index([workspaceId])
 }

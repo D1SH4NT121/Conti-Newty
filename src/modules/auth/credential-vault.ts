@@ -4,27 +4,34 @@ import { config } from '../../config';
 // AES-256-GCM encryption for credentials
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
-const KEY = crypto.scryptSync(config.jwtSecret || 'default-secret', 'salt', 32);
 
 export class CredentialVault {
   public static encrypt(secret: string): string {
+    const salt = crypto.randomBytes(16);
+    const key = crypto.scryptSync(config.jwtSecret, salt, 32);
     const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(ALGORITHM, KEY, iv);
+    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
     
     const encrypted = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
     const tag = cipher.getAuthTag();
 
-    // Store as iv:cipher:tag in hex
-    return `${iv.toString('hex')}:${encrypted.toString('hex')}:${tag.toString('hex')}`;
+    // Store as salt:iv:cipher:tag in hex
+    return `${salt.toString('hex')}:${iv.toString('hex')}:${encrypted.toString('hex')}:${tag.toString('hex')}`;
   }
 
-  public static decrypt(ivCipherTag: string): string {
-    const [ivHex, cipherHex, tagHex] = ivCipherTag.split(':');
+  public static decrypt(saltIvCipherTag: string): string {
+    const parts = saltIvCipherTag.split(':');
+    if (parts.length !== 4) {
+      throw new Error('Invalid encrypted credential format');
+    }
+    const [saltHex, ivHex, cipherHex, tagHex] = parts;
+    const salt = Buffer.from(saltHex, 'hex');
     const iv = Buffer.from(ivHex, 'hex');
     const encrypted = Buffer.from(cipherHex, 'hex');
     const tag = Buffer.from(tagHex, 'hex');
 
-    const decipher = crypto.createDecipheriv(ALGORITHM, KEY, iv);
+    const key = crypto.scryptSync(config.jwtSecret, salt, 32);
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(tag);
 
     const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);

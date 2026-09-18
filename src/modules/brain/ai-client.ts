@@ -22,6 +22,7 @@ export class AIClient {
     messages: AIMessage[];
     systemPrompt?: string;
     tools?: any[];
+    model?: string;
   }): Promise<AIResponse> {
     return this.provider.complete(params);
   }

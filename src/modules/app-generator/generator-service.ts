@@ -7,6 +7,12 @@ import { SandboxRunner } from './sandbox-runner';
 import { validateGeneratedCode } from './validator';
 import { generateDashboardTemplate, generatePortalTemplate } from './templates';
 
+function generateSlug(name: string): string {
+  const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32);
+  const suffix = crypto.randomBytes(3).toString('hex');
+  return `${base}-${suffix}`;
+}
+
 export interface GenerateAppParams {
   workspaceId: string;
   userId: string;
@@ -18,8 +24,10 @@ export interface GenerateAppParams {
 export interface GeneratedAppResult {
   appWorkspaceId: string;
   name: string;
+  slug: string;
   deploymentId: string;
-  url?: string;
+  previewUrl: string;
+  shareUrl: string;
   files: Record<string, string>;
   status: string;
 }
@@ -89,7 +97,8 @@ export class AppGeneratorService {
       data: {
         name,
         description: prompt,
-        workspaceId
+        workspaceId,
+        slug: generateSlug(name)
       }
     });
 
@@ -124,8 +133,10 @@ export class AppGeneratorService {
     return {
       appWorkspaceId: appWorkspace.id,
       name: appWorkspace.name,
+      slug: appWorkspace.slug!,
       deploymentId: deployment.id,
-      url: deploymentUrl,
+      previewUrl: `/api/workspaces/${appWorkspace.workspaceId}/apps/${appWorkspace.id}/preview`,
+      shareUrl: `/apps/${appWorkspace.slug}`,
       files: generatedFiles,
       status: 'DEPLOYED'
     };

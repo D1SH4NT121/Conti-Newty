@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation, Link, Outlet } from 'react-router-
 import { api, WorkspaceSummary, WorkspaceMemberItem } from '../lib/api-client';
 import { useAuth } from '../context/AuthContext';
 import { MultiplayerCursors } from './workspace/MultiplayerCursors';
+import { getSocket } from '../lib/socket';
 
 const NAV_ITEMS: { label: string; path: string; icon: string }[] = [
   { label: 'Home', path: 'home', icon: '\u2302' },
@@ -113,9 +114,7 @@ function SearchModal({ onClose, workspaceId }: { onClose: () => void; workspaceI
 }
 
 const NOTIF_ITEMS = [
-  { id: 'n1', actor: 'Conti', msg: 'Workspace synced and ready', time: 'now' },
-  { id: 'n2', actor: 'Agents', msg: 'No agents need attention', time: '1h ago' },
-  { id: 'n3', actor: 'Activity', msg: 'Recent workspace events are available', time: '3h ago' },
+  { id: 'n1', actor: 'System', msg: 'Workspace ready — agents standing by', time: 'now' },
 ];
 
 function NotifPanel({ onClose, workspaceId }: { onClose: () => void; workspaceId: string }) {
@@ -191,9 +190,10 @@ export const WorkspaceShell: React.FC = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [liveTaskCount, setLiveTaskCount] = useState(0);
   const [multiplayerEnabled, setMultiplayerEnabled] = useState(() => {
     const saved = localStorage.getItem('anti_multiplayer_enabled');
-    return saved !== 'false'; // Defaults to true (ON)
+    return saved !== 'false';
   });
 
   useEffect(() => {
@@ -216,6 +216,20 @@ export const WorkspaceShell: React.FC = () => {
     if (workspaceId) {
       api.getWorkspaceMembers(workspaceId).then(setMembers).catch(console.error);
     }
+  }, [workspaceId]);
+
+  // Live task notifications via socket
+  useEffect(() => {
+    if (!workspaceId) return;
+    const socket = getSocket();
+    const handleCreated = () => setLiveTaskCount(n => n + 1);
+    const handleUpdated = (data: { status: string }) => {
+      if (data.status === 'RUNNING') setLiveTaskCount(n => n + 1);
+      if (data.status === 'COMPLETED' || data.status === 'FAILED') setLiveTaskCount(n => Math.max(0, n - 1));
+    };
+    socket.on('task.created', handleCreated);
+    socket.on('task.updated', handleUpdated);
+    return () => { socket.off('task.created', handleCreated); socket.off('task.updated', handleUpdated); };
   }, [workspaceId]);
 
   const workspaceName = currentWorkspace?.name ?? 'Workspace';
@@ -283,14 +297,17 @@ export const WorkspaceShell: React.FC = () => {
                 : 'text-muted-foreground hover:text-foreground hover:bg-card'
             }`}
           >
-            <span
-              className={`text-sm w-4 text-center shrink-0 ${
-                isActive(item.path) ? 'text-background' : 'text-muted-foreground'
-              }`}
-            >
+            <span className={`text-sm w-4 text-center shrink-0 ${
+              isActive(item.path) ? 'text-background' : 'text-muted-foreground'
+            }`}>
               {item.icon}
             </span>
             <span className="font-mono text-xs">{item.label}</span>
+            {item.path === 'agents' && liveTaskCount > 0 && (
+              <span className="ml-auto w-4 h-4 rounded-full bg-amber-400 text-black font-mono text-[9px] font-bold flex items-center justify-center animate-pulse">
+                {liveTaskCount}
+              </span>
+            )}
           </Link>
         ))}
         <div className="pt-4 px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-muted-foreground font-bold">
@@ -415,34 +432,39 @@ export const WorkspaceShell: React.FC = () => {
             <span className="font-mono text-xs text-muted-foreground hidden sm:block">⌘K</span>
           </button>
           <div className="flex items-center -space-x-1.5">
-            {members.slice(0, 4).map((m) => {
-              const memberInitial = (m.user.name?.[0] || m.user.email?.[0] || 'U').toUpperCase();
-              return m.user.avatarUrl ? (
-                <img
-                  key={m.id}
-                  src={m.user.avatarUrl}
-                  alt={m.user.name || m.user.email}
-                  title={`${m.user.name || m.user.email} (${m.role})`}
-                  className="w-6 h-6 rounded-full object-cover border-2 border-background shadow-sm"
-                />
-              ) : (
-                <div
-                  key={m.id}
-                  title={`${m.user.name || m.user.email} (${m.role})`}
-                  className="w-6 h-6 rounded-full bg-foreground border-2 border-background flex items-center justify-center text-background font-mono text-[10px] font-bold shadow-sm"
-                >
-                  {memberInitial}
-                </div>
-              );
-            })}
-            {members.length === 0 && (
-              <div
-                title={user?.name || user?.email || 'User'}
-                className="w-6 h-6 rounded-full bg-foreground border-2 border-background flex items-center justify-center text-background font-mono text-[10px] font-bold"
-              >
-                {(user?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
-              </div>
-            )}
+            {(() => {
+              const displayed = members.slice(0, 4);
+              const currentUserInList = user && displayed.some((m) => m.userId === user.id);
+              const avatarList = currentUserInList || !user
+                ? displayed
+                : [...displayed.slice(0, 3), null]; // null = current user slot
+              return avatarList.map((m, i) => {
+                if (m === null) {
+                  // Current user slot (not in members list yet)
+                  return user?.avatarUrl ? (
+                    <img key="me" src={user.avatarUrl} alt={user.name || user.email}
+                      title={user.name || user.email}
+                      className="w-6 h-6 rounded-full object-cover border-2 border-background shadow-sm" />
+                  ) : (
+                    <div key="me" title={user?.name || user?.email}
+                      className="w-6 h-6 rounded-full bg-foreground border-2 border-background flex items-center justify-center text-background font-mono text-[10px] font-bold">
+                      {(user?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                    </div>
+                  );
+                }
+                const memberInitial = (m.user.name?.[0] || m.user.email?.[0] || 'U').toUpperCase();
+                return m.user.avatarUrl ? (
+                  <img key={m.id} src={m.user.avatarUrl} alt={m.user.name || m.user.email}
+                    title={`${m.user.name || m.user.email} (${m.role})`}
+                    className="w-6 h-6 rounded-full object-cover border-2 border-background shadow-sm" />
+                ) : (
+                  <div key={m.id} title={`${m.user.name || m.user.email} (${m.role})`}
+                    className="w-6 h-6 rounded-full bg-foreground border-2 border-background flex items-center justify-center text-background font-mono text-[10px] font-bold shadow-sm">
+                    {memberInitial}
+                  </div>
+                );
+              });
+            })()}
           </div>
           <div className="relative">
             <button
@@ -450,12 +472,8 @@ export const WorkspaceShell: React.FC = () => {
               className="relative w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
               {unreadCount > 0 && (
                 <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary" />
@@ -465,19 +483,6 @@ export const WorkspaceShell: React.FC = () => {
               <NotifPanel onClose={() => setNotifOpen(false)} workspaceId={workspaceId ?? ''} />
             )}
           </div>
-          {user?.avatarUrl ? (
-            <img
-              src={user.avatarUrl}
-              alt={user.name || user.email}
-              className="w-7 h-7 rounded-sm object-cover border border-border"
-            />
-          ) : (
-            <div className="w-7 h-7 rounded-sm bg-foreground flex items-center justify-center">
-              <span className="font-mono text-xs text-background font-bold">
-                {(user?.name?.[0] ?? user?.email?.[0] ?? 'A').toUpperCase()}
-              </span>
-            </div>
-          )}
         </header>
 
         <main className="flex-1 overflow-y-auto relative">

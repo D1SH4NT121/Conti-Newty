@@ -32,6 +32,14 @@ export function createApp(customStorageBaseDir?: string, customSandboxRunner?: S
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  app.get('/api/health', (_req: Request, res: Response) => {
+    return res.status(200).json({
+      status: 'ok',
+      provider: config.aiProvider,
+      archiveStorage: process.env.ARCHIVE_BUCKET ? 's3' : 'unconfigured'
+    });
+  });
+
   // CORS
   app.use((req: Request, res: Response, next: NextFunction) => {
     const origin = req.headers.origin;

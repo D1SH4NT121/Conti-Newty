@@ -16,6 +16,7 @@ interface Config {
   googleClientSecret: string;
   githubClientId: string;
   githubClientSecret: string;
+  aiProvider: string;
   allowedOrigins: string[];
 }
 
@@ -31,9 +32,10 @@ const config: Config = {
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
   githubClientId: process.env.GITHUB_CLIENT_ID || '',
   githubClientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+  aiProvider: process.env.AI_PROVIDER || (process.env.NODE_ENV === 'production' ? 'bedrock' : 'claude'),
   allowedOrigins: process.env.ALLOWED_ORIGINS 
     ? process.env.ALLOWED_ORIGINS.split(',') 
-    : (process.env.NODE_ENV !== 'production' ? ['http://localhost:5173'] : [])
+    : (process.env.NODE_ENV !== 'production' ? ['http://localhost:5173', 'http://localhost:3000'] : [])
 };
 
 export { config };

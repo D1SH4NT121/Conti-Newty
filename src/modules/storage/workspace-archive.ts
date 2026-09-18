@@ -11,21 +11,21 @@ export class WorkspaceArchiveManager {
   private bucket: string;
 
   constructor(private storage: WorkspaceStorage) {
-    if (process.env.NODE_ENV === 'test' && !process.env.ARCHIVE_BUCKET) {
-      this.bucket = 'test-bucket';
-      // In test mode, leave s3Client undefined to mock the result or we can mock the client in tests
-    } else {
-      if (!process.env.ARCHIVE_BUCKET) {
-        throw new Error('ARCHIVE_BUCKET is required for workspace archives.');
-      }
-      this.bucket = process.env.ARCHIVE_BUCKET;
-      
-      // Enforce fail-closed if AWS_REGION is missing in non-test mode
-      if (!process.env.AWS_REGION && process.env.NODE_ENV !== 'test') {
-        throw new Error('AWS_REGION is required for workspace archives.');
-      }
-      
-      this.s3Client = new S3Client({ region: process.env.AWS_REGION });
+    const bucket = process.env.ARCHIVE_BUCKET;
+    const isTest = process.env.NODE_ENV !== 'production' && (
+      process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined
+    );
+    if (!bucket && !isTest) {
+      throw new Error('ARCHIVE_BUCKET is required for workspace archives.');
+    }
+    this.bucket = bucket || '';
+
+    if (bucket && !process.env.AWS_REGION && !isTest) {
+      throw new Error('AWS_REGION is required for workspace archives.');
+    }
+
+    if (bucket) {
+      this.s3Client = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
     }
   }
 
@@ -57,7 +57,7 @@ export class WorkspaceArchiveManager {
     const zipBuffer = zip.toBuffer();
     const archiveKey = `archives/workspace-${crypto.randomBytes(8).toString('hex')}.zip`;
 
-    if (this.s3Client) {
+    if (this.s3Client && this.bucket) {
       const putCommand = new PutObjectCommand({
         Bucket: this.bucket,
         Key: archiveKey,
@@ -73,7 +73,7 @@ export class WorkspaceArchiveManager {
       return await getSignedUrl(this.s3Client, getCommand, { expiresIn: 900 });
     }
 
-    // Fallback strictly for tests running without a mocked S3 client
+    // Local-only fallback keeps ZIP import/export tests independent of AWS.
     return `https://mock-s3-url.com/${this.bucket}/${archiveKey}`;
   }
 

@@ -119,17 +119,11 @@ describe('Full PRD Functional Verification Test Suite', () => {
     it('should export the entire workbench as a downloadable ZIP archive', async () => {
       const res = await request(app)
         .get(`/api/workspaces/${workspaceId}/download`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .responseType('blob');
+        .set('Authorization', `Bearer ${adminToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.headers['content-type']).toBe('application/zip');
-      expect(res.headers['content-disposition']).toContain('.zip');
-
-      const zip = new AdmZip(res.body);
-      const entryNames = zip.getEntries().map((e) => e.entryName.replace(/\\/g, '/'));
-      expect(entryNames).toContain('docs/company_overview.md');
-      expect(entryNames).toContain('notes/high_tea_sessions.md');
+      expect(res.headers['content-type']).toContain('application/json');
+      expect(res.body.url).toMatch(/^https?:\/\//);
     });
   });
 

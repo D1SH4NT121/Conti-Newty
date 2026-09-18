@@ -12,6 +12,7 @@ import {
 import { AIClient, AIMessage } from './ai-client';
 import { CredentialService } from '../auth/credential-service';
 import { CHEAP_MODEL, STRONG_MODEL } from './providers/types';
+import { config } from '../../config';
 
 export interface AgentConfig {
   role: string;       // e.g. "Researcher", "Critic", "Summarizer"
@@ -54,7 +55,7 @@ export interface AgentTaskExecutionResult {
 }
 
 const DEFAULT_AGENTS: AgentConfig[] = [
-  { role: 'Researcher', provider: 'claude', systemPrompt: 'You are a research agent. Navigate the Company Brain folder, read relevant files, and answer the question with exact citations in the format [source: path/to/file:lineStart-lineEnd].' }
+  { role: 'Researcher', provider: config.aiProvider, systemPrompt: 'You are a research agent. Navigate the Company Brain folder, read relevant files, and answer the question with exact citations in the format [source: path/to/file:lineStart-lineEnd].' }
 ];
 
 export class AgentRunner {
@@ -78,17 +79,33 @@ export class AgentRunner {
   private async gatherContext(userId: string, workspaceId: string, taskId: string, sourceTracker: SourceTracker): Promise<string> {
     const toolCtx = { userId, workspaceId, storage: this.storage, taskId, sourceTracker };
 
-    const dirResult = await this.brainTools.execute({ toolName: 'list_directory', args: { path: '' }, context: toolCtx });
-
     let contextBlocks: string[] = [];
-    if (dirResult.success && Array.isArray(dirResult.data)) {
-      for (const file of dirResult.data) {
-        if (!file.isDirectory) {
-          const r = await this.brainTools.execute({ toolName: 'read_file', args: { path: file.path }, context: toolCtx });
-          if (r.success && r.data) contextBlocks.push(`--- FILE: ${file.path} ---\n${r.data}`);
+    const collectDirectory = async (relativePath: string): Promise<void> => {
+      const dirResult = await this.brainTools.execute({
+        toolName: 'list_directory',
+        args: { path: relativePath },
+        context: toolCtx
+      });
+      if (!dirResult.success || !Array.isArray(dirResult.data)) return;
+
+      for (const entry of dirResult.data) {
+        if (entry.isDirectory) {
+          await collectDirectory(entry.path);
+          continue;
+        }
+
+        const r = await this.brainTools.execute({
+          toolName: 'read_file',
+          args: { path: entry.path },
+          context: toolCtx
+        });
+        if (r.success && typeof r.data === 'string') {
+          contextBlocks.push(`--- FILE: ${entry.path} ---\n${r.data}`);
         }
       }
-    }
+    };
+
+    await collectDirectory('');
     return contextBlocks.join('\n\n');
   }
 
@@ -152,8 +169,14 @@ export class AgentRunner {
 
         const rawAnswer = aiResponse.content;
         const finalAnswer = sanitizeHallucinatedCitations(rawAnswer, sourceTracker);
-        const citations = extractCitations(finalAnswer, { sourceTracker, workspaceId, taskId });
-        const verifiedCitations = extractVerifiedCitations(finalAnswer, { sourceTracker, workspaceId, taskId });
+        const extractedCitations = extractCitations(finalAnswer, { sourceTracker, workspaceId, taskId });
+        const extractedVerifiedCitations = extractVerifiedCitations(finalAnswer, { sourceTracker, workspaceId, taskId });
+        const citations = extractedCitations.length > 0
+          ? extractedCitations
+          : sourceTracker.getAccessedSources();
+        const verifiedCitations = extractedVerifiedCitations.length > 0
+          ? extractedVerifiedCitations
+          : sourceTracker.getVerifiedCitations(workspaceId, taskId);
 
         const turn: AgentTurn = { agentRole: agentCfg.role, provider: agentCfg.provider, answer: finalAnswer, citations, verifiedCitations };
         turns.push(turn);

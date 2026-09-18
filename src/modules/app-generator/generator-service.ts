@@ -26,6 +26,7 @@ export interface GeneratedAppResult {
   name: string;
   slug: string;
   deploymentId: string;
+  url: string;
   previewUrl: string;
   shareUrl: string;
   files: Record<string, string>;
@@ -135,6 +136,7 @@ export class AppGeneratorService {
       name: appWorkspace.name,
       slug: appWorkspace.slug!,
       deploymentId: deployment.id,
+      url: deploymentUrl,
       previewUrl: `/api/workspaces/${appWorkspace.workspaceId}/apps/${appWorkspace.id}/preview`,
       shareUrl: `/apps/${appWorkspace.slug}`,
       files: generatedFiles,

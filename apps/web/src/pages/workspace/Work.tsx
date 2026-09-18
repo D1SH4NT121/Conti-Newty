@@ -10,7 +10,7 @@ interface ProposedChange {
   originalContent: string;
   proposedContent: string;
   diff: string;
-  status: 'PROPOSED' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
   proposedBy: string;
   reviewedBy?: string | null;
   createdAt: string;
@@ -109,7 +109,7 @@ export const Work: React.FC = () => {
     }
   };
 
-  const pendingCount = proposals.filter((p) => p.status === 'PROPOSED').length;
+  const pendingCount = proposals.filter((p) => p.status === 'PENDING').length;
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-8 animate-fade-in text-foreground">
@@ -296,7 +296,7 @@ export const Work: React.FC = () => {
                   {p.diff || 'Unified Diff generated.'}
                 </div>
 
-                {p.status === 'PROPOSED' && (
+                {p.status === 'PENDING' && (
                   <div className="flex items-center justify-end gap-3 pt-2">
                     <button
                       onClick={() => handleReject(p.id)}

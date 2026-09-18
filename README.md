@@ -71,6 +71,28 @@ Open **`http://localhost:3000`** in your browser.
 npm test
 ```
 
+## AWS Ship-It Demo
+
+Production defaults AI tasks to Amazon Bedrock. The AWS SDK uses environment credentials or its default credential chain, so IAM roles work without storing keys in the container.
+
+Set these values in the deployment environment:
+
+```bash
+AI_PROVIDER=bedrock
+AWS_REGION=us-east-1
+ARCHIVE_BUCKET=your-private-archive-bucket
+```
+
+For local credentials, also set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. The Bedrock model defaults to `anthropic.claude-3-haiku-20240307-v1:0`; enable that model in the selected AWS region. Workspace archive export uploads ZIPs to the private S3 bucket and returns a 15-minute presigned download URL.
+
+Run the demo container with:
+
+```bash
+docker compose up --build
+```
+
+Do not commit `.env` or AWS credentials. In production, provide credentials through the task/container role or the deployment secret store.
+
 ---
 
 ## 🔐 Security & Authorization Chain

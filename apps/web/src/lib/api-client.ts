@@ -381,7 +381,7 @@ class ApiClient {
     return res.json();
   }
 
-  async downloadWorkspaceZip(workspaceId: string): Promise<Blob> {
+  async downloadWorkspaceZip(workspaceId: string): Promise<string> {
     const token = localStorage.getItem('anti_token');
     const res = await fetch(`/api/workspaces/${workspaceId}/download`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -389,7 +389,8 @@ class ApiClient {
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: Failed to download workspace archive`);
     }
-    return res.blob();
+    const data = await res.json();
+    return data.url;
   }
 
   async uploadWorkspaceZip(workspaceId: string, zipBase64: string): Promise<{ success: boolean; count: number; files: string[] }> {

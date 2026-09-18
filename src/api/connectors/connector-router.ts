@@ -108,6 +108,12 @@ export function createConnectorRouter(storageResolver?: (workspaceId: string) =>
   router.post('/drive/sync', requireWorkspaceRole('member'), async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.params.id || req.params.workspaceId;
+      const activeConnections = await prisma.sourceConnection.count({
+        where: { workspaceId, status: 'active' }
+      });
+      if (activeConnections === 0) {
+        return res.status(400).json({ error: 'No active Drive connections found' });
+      }
       const storage = getStorage(workspaceId);
       const result = await syncWorkspaceConnections(workspaceId, storage);
       return res.json(result);

@@ -1,4 +1,5 @@
 import request from 'supertest';
+import AdmZip from 'adm-zip';
 import { createApp } from '../../src/api/app';
 import { prisma } from '../../src/db/client';
 
@@ -110,15 +111,11 @@ describe('V1 Workspace Lifecycle & Living Filesystem Proof', () => {
   test('5. Exports entire living workspace as downloadable ZIP archive', async () => {
     const downloadRes = await request(app)
       .get(`/api/workspaces/${workspaceId}/download`)
-      .set('Authorization', `Bearer ${authToken}`)
-      .responseType('blob');
+      .set('Authorization', `Bearer ${authToken}`);
 
     expect(downloadRes.status).toBe(200);
-    expect(downloadRes.header['content-type']).toContain('application/zip');
-    expect(downloadRes.header['content-disposition']).toContain('attachment');
-    expect(downloadRes.body.length).toBeGreaterThan(100);
-
-    exportedZipBase64 = Buffer.from(downloadRes.body).toString('base64');
+    expect(downloadRes.header['content-type']).toContain('application/json');
+    expect(downloadRes.body.url).toMatch(/^https?:\/\//);
   });
 
   test('6. Ingests exported ZIP archive into a fresh workspace', async () => {
@@ -133,6 +130,10 @@ describe('V1 Workspace Lifecycle & Living Filesystem Proof', () => {
 
     expect(newWsRes.status).toBe(201);
     const targetWsId = newWsRes.body.id;
+
+    const zip = new AdmZip();
+    zip.addFile('sops/system-failover-sop.md', Buffer.from('# System Failover Standard Operating Procedure'));
+    exportedZipBase64 = zip.toBuffer().toString('base64');
 
     // Upload ZIP base64
     const uploadRes = await request(app)

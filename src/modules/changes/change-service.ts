@@ -60,11 +60,25 @@ export class ChangeService {
     }
 
     const diff = computeLineDiff(originalContent, proposedContent);
+    let proposerId = proposedBy;
+    const proposer = await prisma.user.findUnique({ where: { id: proposedBy } });
+    if (!proposer) {
+      const systemProposer = await prisma.user.upsert({
+        where: { email: 'ai-agent@system.local' },
+        update: {},
+        create: {
+          email: 'ai-agent@system.local',
+          name: 'AI Agent',
+          passwordHash: null
+        }
+      });
+      proposerId = systemProposer.id;
+    }
     const change = await prisma.proposedChange.create({
       data: {
         workspaceId,
         filePath,
-        proposedBy,
+        proposedBy: proposerId,
         status: 'PENDING',
         originalContent,
         proposedContent,

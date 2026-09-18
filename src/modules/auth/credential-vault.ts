@@ -15,18 +15,19 @@ export class CredentialVault {
     const encrypted = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
     const tag = cipher.getAuthTag();
 
-    // Store as salt:iv:cipher:tag in hex
-    return `${salt.toString('hex')}:${iv.toString('hex')}:${encrypted.toString('hex')}:${tag.toString('hex')}`;
+    // Store salt and IV together so the persisted format remains salt+iv:cipher:tag.
+    return `${Buffer.concat([salt, iv]).toString('hex')}:${encrypted.toString('hex')}:${tag.toString('hex')}`;
   }
 
-  public static decrypt(saltIvCipherTag: string): string {
-    const parts = saltIvCipherTag.split(':');
-    if (parts.length !== 4) {
+  public static decrypt(encryptedCredential: string): string {
+    const parts = encryptedCredential.split(':');
+    if (parts.length !== 3) {
       throw new Error('Invalid encrypted credential format');
     }
-    const [saltHex, ivHex, cipherHex, tagHex] = parts;
-    const salt = Buffer.from(saltHex, 'hex');
-    const iv = Buffer.from(ivHex, 'hex');
+    const [saltIvHex, cipherHex, tagHex] = parts;
+    const saltIv = Buffer.from(saltIvHex, 'hex');
+    const salt = saltIv.subarray(0, 16);
+    const iv = saltIv.subarray(16);
     const encrypted = Buffer.from(cipherHex, 'hex');
     const tag = Buffer.from(tagHex, 'hex');
 

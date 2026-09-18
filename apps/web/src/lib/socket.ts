@@ -7,9 +7,7 @@ export function getSocket(): Socket {
     const token = typeof window !== 'undefined' ? localStorage.getItem('anti_token') : null;
     socketInstance = io(window.location.origin, {
       path: '/socket.io',
-      auth: {
-        token: token || undefined,
-      },
+      auth: { token: token || undefined },
       transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,
@@ -18,6 +16,14 @@ export function getSocket(): Socket {
     });
   }
   return socketInstance;
+}
+
+export function joinTaskRoom(taskId: string, workspaceId: string) {
+  getSocket().emit('task.join', { taskId, workspaceId });
+}
+
+export function leaveTaskRoom(taskId: string, workspaceId: string) {
+  getSocket().emit('task.leave', { taskId, workspaceId });
 }
 
 export function disconnectSocket() {

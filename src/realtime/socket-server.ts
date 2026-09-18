@@ -51,7 +51,6 @@ export function createSocketServer(httpServer: http.Server) {
       const presences = presenceManager.joinWorkspace(workspaceId, socket.id, user);
       EventBroadcaster.broadcastPresenceChanged(io, workspaceId, presences);
 
-      // Check for active streams in progress and deliver server-side backlog to mid-stream joiner
       const activeStreams = streamManager.getActiveStreamsForWorkspace(workspaceId);
       for (const active of activeStreams) {
         socket.emit('stream.backlog', {
@@ -61,6 +60,26 @@ export function createSocketServer(httpServer: http.Server) {
           chunkCount: active.chunks.length
         });
       }
+    });
+
+    // Task room — join to watch a specific agent task live
+    socket.on('task.join', (data: { taskId: string; workspaceId: string }) => {
+      const { taskId, workspaceId } = data;
+      if (!taskId || !workspaceId) return;
+      socket.join(`task:${taskId}`);
+      // Broadcast updated watcher count to workspace
+      const room = `task:${taskId}`;
+      const sockets = io.sockets.adapter.rooms.get(room);
+      io.to(`workspace:${workspaceId}`).emit('task.watchers', { taskId, count: sockets?.size ?? 1 });
+    });
+
+    socket.on('task.leave', (data: { taskId: string; workspaceId: string }) => {
+      const { taskId, workspaceId } = data;
+      if (!taskId) return;
+      socket.leave(`task:${taskId}`);
+      const room = `task:${taskId}`;
+      const sockets = io.sockets.adapter.rooms.get(room);
+      io.to(`workspace:${workspaceId}`).emit('task.watchers', { taskId, count: sockets?.size ?? 0 });
     });
 
     // Realtime Multiplayer Cursor Position Broadcasting with real userId

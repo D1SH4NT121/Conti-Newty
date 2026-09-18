@@ -1,23 +1,42 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext, Link, useNavigate } from 'react-router-dom';
 import { api, WorkspaceSummary, WorkspaceFileEntry } from '../../lib/api-client';
-import { Brain, GitPullRequest, ShieldCheck, ArrowRight } from 'lucide-react';
+import { ArrowRight, Clock } from 'lucide-react';
+
+interface RecentTask {
+  id: string;
+  title: string;
+  status: string;
+  createdAt: string;
+}
+
+const STATUS_STYLES: Record<string, { dot: string; label: string }> = {
+  COMPLETED: { dot: 'bg-emerald-400', label: 'text-emerald-400' },
+  RUNNING:   { dot: 'bg-amber-400 animate-pulse', label: 'text-amber-400' },
+  PENDING:   { dot: 'bg-amber-400 animate-pulse', label: 'text-amber-400' },
+  FAILED:    { dot: 'bg-red-400', label: 'text-red-400' },
+  CANCELLED: { dot: 'bg-white/30', label: 'text-white/40' },
+};
 
 export const Home: React.FC = () => {
   const { workspace } = useOutletContext<{ workspace: WorkspaceSummary }>();
   const navigate = useNavigate();
   const [files, setFiles] = useState<WorkspaceFileEntry[]>([]);
+  const [tasks, setTasks] = useState<RecentTask[]>([]);
   const [quickQuestion, setQuickQuestion] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [filesLoading, setFilesLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(true);
 
   useEffect(() => {
-    if (workspace?.id) {
-      api
-        .listFiles(workspace.id)
-        .then(setFiles)
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    }
+    if (!workspace?.id) return;
+    api.listFiles(workspace.id)
+      .then(setFiles)
+      .catch(console.error)
+      .finally(() => setFilesLoading(false));
+    api.listTasks(workspace.id, 5)
+      .then(setTasks)
+      .catch(console.error)
+      .finally(() => setTasksLoading(false));
   }, [workspace?.id]);
 
   const handleQuickAsk = (e: React.FormEvent) => {
@@ -26,26 +45,8 @@ export const Home: React.FC = () => {
     navigate(`/w/${workspace.id}/ask?q=${encodeURIComponent(quickQuestion.trim())}`);
   };
 
-  const agents = [
-    {
-      name: 'Navigation Agent',
-      status: 'ACTIVE',
-      step: 'TRAVERSING /operations/chicago',
-      color: 'text-emerald-400',
-      dotColor: 'bg-emerald-400',
-    },
-    {
-      name: 'Reporting Agent',
-      status: 'IDLE',
-      step: 'Waiting for next task',
-      color: 'text-white/40',
-      dotColor: 'bg-white/30',
-    },
-  ];
-
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-10 animate-fade-in text-foreground">
-      {/* Header Section */}
       <div className="mb-10">
         <p className="font-mono text-[10px] text-[#ff7597] font-bold tracking-widest mb-2 uppercase">
           {workspace?.name} • INSTITUTIONAL MEMORY
@@ -53,7 +54,7 @@ export const Home: React.FC = () => {
         <h1 className="font-serif text-4xl font-light text-white mb-6 tracking-tight">
           What are you working on?
         </h1>
-        <form onSubmit={handleQuickAsk} className="flex gap-2 max-w-2xl relative">
+        <form onSubmit={handleQuickAsk} className="flex gap-2 max-w-2xl">
           <input
             type="text"
             value={quickQuestion}
@@ -72,7 +73,7 @@ export const Home: React.FC = () => {
 
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-10">
-          {/* Active Work / Recent Files */}
+          {/* Living Filesystem */}
           <section>
             <div className="flex items-center justify-between mb-4">
               <span className="font-mono text-[10px] font-bold text-white/50 tracking-widest uppercase">
@@ -86,17 +87,13 @@ export const Home: React.FC = () => {
               </Link>
             </div>
 
-            {loading ? (
+            {filesLoading ? (
               <div className="border border-white/10 bg-[#141312] p-12 text-center rounded-xl">
-                <div className="font-mono text-xs text-white/40 animate-pulse">
-                  READING DIRECTORY INDEX...
-                </div>
+                <div className="font-mono text-xs text-white/40 animate-pulse">READING DIRECTORY INDEX...</div>
               </div>
             ) : files.length === 0 ? (
               <div className="border border-white/10 bg-[#141312] p-12 text-center rounded-xl">
-                <div className="font-mono text-[10px] font-bold text-white/40 mb-4 uppercase">
-                  NO ACTIVE KNOWLEDGE
-                </div>
+                <div className="font-mono text-[10px] font-bold text-white/40 mb-4 uppercase">NO ACTIVE KNOWLEDGE</div>
                 <Link
                   to={`/w/${workspace?.id}/brain`}
                   className="inline-block font-mono text-[10px] font-bold px-5 py-2.5 border border-white/20 text-white/80 hover:border-white hover:text-white transition-colors uppercase rounded-md"
@@ -109,29 +106,20 @@ export const Home: React.FC = () => {
                 {files.slice(0, 5).map((file) => (
                   <button
                     key={file.path}
-                    onClick={() =>
-                      navigate(
-                        `/w/${workspace?.id}/brain?file=${encodeURIComponent(file.path)}`
-                      )
-                    }
+                    onClick={() => navigate(`/w/${workspace?.id}/brain?file=${encodeURIComponent(file.path)}`)}
                     className="w-full flex items-center gap-4 bg-[#141312] border border-white/8 hover:border-white/20 hover:bg-[#181716] transition-all px-5 py-4 text-left group rounded-xl cursor-pointer"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-white group-hover:text-accent transition-colors truncate">
                         {file.name}
                       </div>
-                      <div className="font-mono text-[10px] text-white/40 mt-1 uppercase truncate">
-                        {file.path}
-                      </div>
+                      <div className="font-mono text-[10px] text-white/40 mt-1 uppercase truncate">{file.path}</div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="font-mono text-[10px] px-2 py-0.5 bg-white/5 border border-white/10 text-white/60 rounded uppercase">
                         {file.isDirectory ? 'DIR' : 'FILE'}
                       </span>
-                      <ArrowRight
-                        size={14}
-                        className="text-white/30 group-hover:text-white group-hover:translate-x-0.5 transition-all"
-                      />
+                      <ArrowRight size={14} className="text-white/30 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
                     </div>
                   </button>
                 ))}
@@ -139,44 +127,28 @@ export const Home: React.FC = () => {
             )}
           </section>
 
-          {/* System Metrics */}
-          <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-[#141312] border border-white/8 rounded-xl p-6 shadow-md hover:border-white/15 transition-all">
-              <div className="flex items-center justify-between text-white/50 font-mono text-[10px] font-bold tracking-widest uppercase mb-4">
-                <span>INDEXED DOCUMENTS</span>
-                <Brain size={16} className="text-[#ff7597]" />
+          {/* File count stat — only shown when there are files */}
+          {!filesLoading && files.length > 0 && (
+            <div className="bg-[#141312] border border-white/8 rounded-xl p-6 shadow-md">
+              <div className="font-mono text-[10px] font-bold text-white/50 tracking-widest uppercase mb-2">
+                INDEXED OBJECTS
               </div>
               <div className="text-3xl font-serif font-light text-white">
                 {files.length}{' '}
-                <span className="text-sm font-mono text-white/40 uppercase ml-1">Objects</span>
+                <span className="text-sm font-mono text-white/40 uppercase ml-1">
+                  {files.length === 1 ? 'object' : 'objects'}
+                </span>
               </div>
-              <p className="text-[10px] font-mono text-white/40 mt-2 uppercase">
-                Living disk storage sandbox
-              </p>
             </div>
-
-            <div className="bg-[#141312] border border-white/8 rounded-xl p-6 shadow-md hover:border-white/15 transition-all">
-              <div className="flex items-center justify-between text-white/50 font-mono text-[10px] font-bold tracking-widest uppercase mb-4">
-                <span>PROVENANCE ACCURACY</span>
-                <ShieldCheck size={16} className="text-emerald-400" />
-              </div>
-              <div className="text-3xl font-serif font-light text-white">
-                100%{' '}
-                <span className="text-sm font-mono text-white/40 uppercase ml-1">SHA-256</span>
-              </div>
-              <p className="text-[10px] font-mono text-white/40 mt-2 uppercase">
-                Cryptographic line-grounding
-              </p>
-            </div>
-          </section>
+          )}
         </div>
 
-        {/* Sidebar */}
+        {/* Sidebar — real agent task history */}
         <div className="space-y-10">
           <section>
             <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
               <span className="font-mono text-[10px] font-bold text-white/50 tracking-widest uppercase">
-                AGENT ACTIVITY
+                RECENT AGENT TASKS
               </span>
               <Link
                 to={`/w/${workspace?.id}/agents`}
@@ -185,67 +157,47 @@ export const Home: React.FC = () => {
                 All →
               </Link>
             </div>
-            <div className="space-y-3">
-              {agents.map((a, i) => (
-                <div
-                  key={i}
-                  className="group border border-white/8 bg-[#141312] hover:border-white/20 transition-all p-4 rounded-xl shadow-sm cursor-default"
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div
-                      className={`w-1.5 h-1.5 rounded-full ${a.dotColor} ${
-                        a.status === 'ACTIVE' ? 'animate-pulse' : ''
-                      }`}
-                    />
-                    <span className="font-mono text-[11px] text-white font-bold uppercase">
-                      {a.name}
-                    </span>
-                    <span className={`font-mono text-[9px] ml-auto font-bold uppercase ${a.color}`}>
-                      {a.status}
-                    </span>
-                  </div>
-                  <div className="font-mono text-[10px] text-white/50 leading-relaxed italic">
-                    {a.step}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
 
-          <section>
-            <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
-              <span className="font-mono text-[10px] font-bold text-white/50 tracking-widest uppercase">
-                SYSTEM STATUS
-              </span>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3.5 rounded-xl bg-[#141312] border border-white/8">
-                <div className="w-8 h-8 rounded-lg bg-[#2a131a] border border-[#591b2b] flex items-center justify-center text-[#ff7597]">
-                  <GitPullRequest size={14} />
-                </div>
-                <div>
-                  <div className="text-[10.5px] font-bold text-white uppercase">
-                    GOVERNANCE ACTIVE
-                  </div>
-                  <div className="font-mono text-[9px] text-white/40 uppercase">
-                    Atomic disk writes enabled
-                  </div>
-                </div>
+            {tasksLoading ? (
+              <div className="font-mono text-[10px] text-white/30 animate-pulse py-4">LOADING...</div>
+            ) : tasks.length === 0 ? (
+              <div className="border border-white/8 bg-[#141312] rounded-xl p-5 text-center">
+                <div className="font-mono text-[10px] text-white/30 uppercase mb-3">No tasks yet</div>
+                <button
+                  onClick={() => navigate(`/w/${workspace?.id}/ask`)}
+                  className="font-mono text-[10px] font-bold px-4 py-2 border border-white/20 text-white/70 hover:border-white hover:text-white transition-colors uppercase rounded-md cursor-pointer"
+                >
+                  RUN FIRST TASK →
+                </button>
               </div>
-              <div className="flex items-center gap-3 p-3.5 rounded-xl bg-[#141312] border border-white/8">
-                <div className="w-8 h-8 rounded-lg bg-[#062419] border border-[#0d4a34] flex items-center justify-center text-emerald-400">
-                  <ShieldCheck size={14} />
-                </div>
-                <div>
-                  <div className="text-[10.5px] font-bold text-white uppercase">
-                    INTEGRITY VERIFIED
-                  </div>
-                  <div className="font-mono text-[9px] text-white/40 uppercase">
-                    No unauthorized file mutations
-                  </div>
-                </div>
+            ) : (
+              <div className="space-y-3">
+                {tasks.map((task) => {
+                  const style = STATUS_STYLES[task.status] ?? STATUS_STYLES.CANCELLED;
+                  return (
+                    <button
+                      key={task.id}
+                      onClick={() => navigate(`/w/${workspace?.id}/agents`)}
+                      className="w-full text-left group border border-white/8 bg-[#141312] hover:border-white/20 transition-all p-4 rounded-xl shadow-sm cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${style.dot}`} />
+                        <span className="font-mono text-[11px] text-white font-bold uppercase truncate flex-1">
+                          {task.title}
+                        </span>
+                        <span className={`font-mono text-[9px] font-bold uppercase shrink-0 ${style.label}`}>
+                          {task.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 font-mono text-[10px] text-white/40 pl-3.5">
+                        <Clock size={9} />
+                        <span>{new Date(task.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
+            )}
           </section>
         </div>
       </div>

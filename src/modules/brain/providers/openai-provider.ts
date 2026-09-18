@@ -13,6 +13,7 @@ export class OpenAIProvider implements LLMProvider {
     messages: AIMessage[];
     systemPrompt?: string;
     tools?: any[];
+    model?: string;
   }): Promise<AIResponse> {
     if (this.apiKey) {
       const messages = [
@@ -30,7 +31,7 @@ export class OpenAIProvider implements LLMProvider {
       }));
 
       const bodyPayload: any = {
-        model: 'gpt-4o',
+        model: params.model || 'gpt-4o',
         messages,
         max_tokens: 4096
       };

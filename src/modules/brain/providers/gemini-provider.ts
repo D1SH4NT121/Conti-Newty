@@ -13,6 +13,7 @@ export class GeminiProvider implements LLMProvider {
     messages: AIMessage[];
     systemPrompt?: string;
     tools?: any[];
+    model?: string;
   }): Promise<AIResponse> {
     if (this.apiKey) {
       const contents = params.messages.map((m) => ({
@@ -36,7 +37,8 @@ export class GeminiProvider implements LLMProvider {
         bodyPayload.tools = [{ functionDeclarations }];
       }
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`;
+      const modelId = params.model || 'gemini-1.5-flash';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${this.apiKey}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

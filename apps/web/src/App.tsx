@@ -8,6 +8,7 @@ import { AuthCallback } from './pages/AuthCallback';
 import { EnterWorkspace } from './pages/EnterWorkspace';
 import { InviteRedirect } from './pages/InviteRedirect';
 import { Onboarding } from './pages/Onboarding';
+import { DriveCallback } from './pages/DriveCallback';
 import { WorkspaceShell } from './components/WorkspaceShell';
 
 // Workspace views
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="/invite/:token" element={<InviteRedirect />} />
             <Route path="/enter" element={<EnterWorkspace />} />
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/w/drive/callback" element={<DriveCallback />} />
 
             {/* Living Knowledge Workspace Shell & Surfaces */}
             <Route path="/w/:workspaceId" element={<WorkspaceShell />}>

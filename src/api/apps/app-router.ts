@@ -34,7 +34,11 @@ export function createAppRouter(
       const workspaceId = req.params.id || req.params.workspaceId;
       const service = getService(workspaceId);
       const apps = await service.listApps(workspaceId);
-      return res.status(200).json(apps);
+      return res.status(200).json(apps.map(a => ({
+        ...a,
+        previewUrl: `/api/workspaces/${workspaceId}/apps/${a.id}/preview`,
+        shareUrl: a.slug ? `/apps/${a.slug}` : null
+      })));
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

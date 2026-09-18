@@ -52,6 +52,7 @@ export class SandboxRunner {
       server.listen(0, '127.0.0.1', () => {
         const address = server.address() as AddressInfo;
         const port = address.port;
+        // Assumes direct access; will break behind a reverse proxy without path-based routing — revisit before Docker deployment.
         const url = `http://localhost:${port}`;
 
         this.activeSandboxes.set(appWorkspaceId, {

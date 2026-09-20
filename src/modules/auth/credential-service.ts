@@ -13,7 +13,9 @@ export class CredentialService {
       if (userCred) {
         try {
           return CredentialVault.decrypt(userCred.secretEnc);
-        } catch {}
+        } catch {
+          // Ignore decryption error and fall back
+        }
       }
     }
 
@@ -26,7 +28,9 @@ export class CredentialService {
       if (wsCred) {
         try {
           return CredentialVault.decrypt(wsCred.secretEnc);
-        } catch {}
+        } catch {
+          // Ignore decryption error and fall back
+        }
       }
     }
 
@@ -35,6 +39,14 @@ export class CredentialService {
     if (lower === 'claude') return config.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
     if (lower === 'gemini') return process.env.GEMINI_API_KEY;
     if (lower === 'openai') return process.env.OPENAI_API_KEY;
+    if (lower === 'bedrock') {
+      const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+      const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+      const region = process.env.AWS_REGION;
+      if (accessKeyId && secretAccessKey && region) {
+        return JSON.stringify({ accessKeyId, secretAccessKey, region });
+      }
+    }
 
     return undefined;
   }

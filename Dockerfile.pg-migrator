@@ -1,0 +1,3 @@
+﻿FROM postgres:16-alpine
+COPY prisma/migration.sql /migration.sql
+CMD ["sh","-c","psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f /migration.sql"]

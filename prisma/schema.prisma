@@ -7,86 +7,106 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 model Organization {
-  id           String   @id @default(uuid())
-  name         String
-  description  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  users        User[]
-  workspaces   Workspace[]
-  memberships  Membership[]
-  invites      OrgInvite[]
-  joinCodes    OrgJoinCode[]
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  users       User[]
+  workspaces  Workspace[]
+  memberships Membership[]
+  invites     OrgInvite[]
+  joinCodes   OrgJoinCode[]
 }
 
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  name          String?
-  passwordHash  String?
-  googleId      String?  @unique
-  githubId      String?  @unique
-  avatarUrl     String?
-  role          String   @default("USER") // e.g., ADMIN, USER, GUEST
-  lastWorkspaceId String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  organization  Organization? @relation(fields: [organizationId], references: [id])
-  organizationId String?
-  memberships   Membership[]
-  workspaces    WorkspaceMember[]
-  createdThreads Thread[] @relation("CreatedBy")
-  authoredMessages Message[] @relation("Author")
-  assignedTasks AgentTask[] @relation("AssignedTo")
-  createdTasks AgentTask[] @relation("CreatedBy")
-  appAccesses AppAccess[] @relation("User")
-  grantedAccesses AppAccess[] @relation("GrantedBy")
-  usageLogs UsageLog[] @relation("UsageLogs")
-  auditLogs AuditLog[] @relation("AuditLogs")
-  invitesSent OrgInvite[] @relation("InvitedBy")
-  joinCodesCreated OrgJoinCode[] @relation("JoinCodeCreatedBy")
-  providerCredentials ProviderCredential[]
-  proposedChanges ProposedChange[] @relation("ProposedChanges")
-  reviewedChanges ProposedChange[] @relation("ReviewedChanges")
+  id                    String               @id @default(uuid())
+  email                 String               @unique
+  name                  String?
+  passwordHash          String?
+  googleId              String?              @unique
+  githubId              String?              @unique
+  avatarUrl             String?
+  role                  String               @default("USER") // e.g., ADMIN, USER, GUEST
+  lastWorkspaceId       String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  organization          Organization?        @relation(fields: [organizationId], references: [id])
+  organizationId        String?
+  memberships           Membership[]
+  workspaces            WorkspaceMember[]
+  createdThreads        Thread[]             @relation("CreatedBy")
+  authoredMessages      Message[]            @relation("Author")
+  assignedTasks         AgentTask[]          @relation("AssignedTo")
+  createdTasks          AgentTask[]          @relation("CreatedBy")
+  appAccesses           AppAccess[]          @relation("User")
+  grantedAccesses       AppAccess[]          @relation("GrantedBy")
+  usageLogs             UsageLog[]           @relation("UsageLogs")
+  auditLogs             AuditLog[]           @relation("AuditLogs")
+  invitesSent           OrgInvite[]          @relation("InvitedBy")
+  joinCodesCreated      OrgJoinCode[]        @relation("JoinCodeCreatedBy")
+  providerCredentials   ProviderCredential[]
+  proposedChanges       ProposedChange[]     @relation("ProposedChanges")
+  reviewedChanges       ProposedChange[]     @relation("ReviewedChanges")
+  jiraConnections       JiraConnection[]     @relation("JiraConnections")
+  slackConnections      SlackConnection[]    @relation("SlackConnections")
+  tribalMemoryEntries   TribalMemoryEntry[]  @relation("TribalMemoryAuthor")
+  liveSessionsCreated   LiveSession[]        @relation("SessionCreatedBy")
+  sessionParticipants   SessionParticipant[]
+  sessionEvents         SessionEvent[]
+  redirects             AgentRedirect[]
+  skillEntriesCreated   SkillEntry[]         @relation("SkillCreatedBy")
+  skillReviews          SkillReview[]
+  reviewedCandidates    KnowledgeCandidate[] @relation("CandidateReviewedBy")
+  currentDriverSessions LiveSession[]        @relation("CurrentSessionDriver")
 }
 
 model Membership {
-  id            String   @id @default(uuid())
-  role          String   // e.g., OWNER, ADMIN, MEMBER
-  user          User     @relation(fields: [userId], references: [id])
-  userId        String
-  organization  Organization @relation(fields: [organizationId], references: [id])
+  id             String       @id @default(uuid())
+  role           String       // e.g., OWNER, ADMIN, MEMBER
+  user           User         @relation(fields: [userId], references: [id])
+  userId         String
+  organization   Organization @relation(fields: [organizationId], references: [id])
   organizationId String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@unique([userId, organizationId])
 }
 
 model Workspace {
-  id              String   @id @default(uuid())
-  name            String
-  description     String?
-  organization    Organization @relation(fields: [organizationId], references: [id])
-  organizationId  String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  members         WorkspaceMember[]
-  readOnlyPaths   ReadOnlyPath[]
-  threads         Thread[]
-  agentTasks      AgentTask[] @relation("TaskWorkspace")
-  appWorkspaces   AppWorkspace[] @relation("AppWorkspaces")
-  usageLogs       UsageLog[] @relation("UsageLogsWorkspace")
-  auditLogs       AuditLog[] @relation("AuditLogsWorkspace")
-  connectorSyncs  ConnectorSync[]
+  id                  String               @id @default(uuid())
+  name                String
+  description         String?
+  organization        Organization         @relation(fields: [organizationId], references: [id])
+  organizationId      String
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  members             WorkspaceMember[]
+  readOnlyPaths       ReadOnlyPath[]
+  threads             Thread[]
+  agentTasks          AgentTask[]          @relation("TaskWorkspace")
+  appWorkspaces       AppWorkspace[]       @relation("AppWorkspaces")
+  usageLogs           UsageLog[]           @relation("UsageLogsWorkspace")
+  auditLogs           AuditLog[]           @relation("AuditLogsWorkspace")
+  connectorSyncs      ConnectorSync[]
   providerCredentials ProviderCredential[]
-  invites         OrgInvite[]
-  joinCodes       OrgJoinCode[]
-  proposedChanges ProposedChange[]
+  invites             OrgInvite[]
+  joinCodes           OrgJoinCode[]
+  proposedChanges     ProposedChange[]
+  jiraConnections     JiraConnection[]
+  slackConnections    SlackConnection[]
+  tribalMemoryEntries TribalMemoryEntry[]
+  liveSessions        LiveSession[]
+  redirects           AgentRedirect[]      @relation("RedirectWorkspace")
+  skillEntries        SkillEntry[]
+  ingestedItems       IngestedItem[]
+  connectorOptIn      ConnectorOptIn?
+  knowledgeCandidates KnowledgeCandidate[]
 }
 
 model OrgInvite {
@@ -124,162 +144,281 @@ model OrgJoinCode {
 }
 
 model WorkspaceMember {
-  id            String   @id @default(uuid())
-  role          String   // e.g., OWNER, ADMIN, MEMBER
-  user          User     @relation(fields: [userId], references: [id])
-  userId        String
-  workspace     Workspace @relation(fields: [workspaceId], references: [id])
-  workspaceId   String
-  joinedAt      DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String    @id @default(uuid())
+  role        String    // e.g., OWNER, ADMIN, MEMBER
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId String
+  joinedAt    DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@unique([userId, workspaceId])
 }
 
 model ReadOnlyPath {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   path        String
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
   workspaceId String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Thread {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   title       String
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
   workspaceId String
-  createdBy   User     @relation("CreatedBy", fields: [createdById], references: [id])
+  createdBy   User      @relation("CreatedBy", fields: [createdById], references: [id])
   createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   messages    Message[]
 }
 
 model Message {
-  id          String   @id @default(uuid())
-  content     String
-  thread      Thread   @relation(fields: [threadId], references: [id])
-  threadId    String
-  author      User     @relation("Author", fields: [authorId], references: [id])
-  authorId    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  content   String
+  thread    Thread   @relation(fields: [threadId], references: [id])
+  threadId  String
+  author    User     @relation("Author", fields: [authorId], references: [id])
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model AgentTask {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  status      String   // e.g., PENDING, IN_PROGRESS, COMPLETED, FAILED
-  priority    Int      @default(1) // 1=low, 2=medium, 3=high
-  assignedTo  User?    @relation("AssignedTo", fields: [assignedToId], references: [id])
+  id           String          @id @default(uuid())
+  title        String
+  description  String?
+  status       String          // e.g., PENDING, IN_PROGRESS, COMPLETED, FAILED
+  priority     Int             @default(1) // 1=low, 2=medium, 3=high
+  assignedTo   User?           @relation("AssignedTo", fields: [assignedToId], references: [id])
   assignedToId String?
-  createdBy   User     @relation("CreatedBy", fields: [createdById], references: [id])
-  createdById String
-  workspace   Workspace? @relation("TaskWorkspace", fields: [workspaceId], references: [id])
-  workspaceId String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  dueDate     DateTime?
-  events      AgentEvent[] @relation("AgentTaskEvents")
-  executions  ToolExecution[] @relation("ToolExecutions")
+  createdBy    User            @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById  String
+  workspace    Workspace?      @relation("TaskWorkspace", fields: [workspaceId], references: [id])
+  workspaceId  String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  dueDate      DateTime?
+  events       AgentEvent[]    @relation("AgentTaskEvents")
+  executions   ToolExecution[] @relation("ToolExecutions")
+  session      LiveSession?    @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  sessionId    String?
+}
+
+model LiveSession {
+  id              String               @id @default(uuid())
+  workspace       Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId     String
+  createdBy       User                 @relation("SessionCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  createdById     String
+  currentDriver   User?                @relation("CurrentSessionDriver", fields: [currentDriverId], references: [id], onDelete: SetNull)
+  currentDriverId String?
+  title           String
+  goal            String
+  status          String               @default("CREATED") // CREATED | RUNNING | PAUSED | COMPLETED | FAILED | CANCELLED
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  participants    SessionParticipant[]
+  events          SessionEvent[]
+  redirects       AgentRedirect[]
+  skills          SkillEntry[]
+  agentTasks      AgentTask[]
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, createdAt])
+  @@index([currentDriverId, status])
+}
+
+model SessionParticipant {
+  id         String      @id @default(uuid())
+  session    LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId  String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  role       String      // DRIVER | OBSERVER
+  status     String      @default("CONNECTED")
+  joinedAt   DateTime    @default(now())
+  lastSeenAt DateTime    @default(now())
+
+  @@unique([sessionId, userId])
+  @@index([sessionId, role, status])
+  @@index([userId, status])
+}
+
+model SessionEvent {
+  id        String      @id @default(uuid())
+  session   LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String
+  actor     User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorId   String?
+  type      String
+  payload   String
+  createdAt DateTime    @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([sessionId, type])
+}
+
+model AgentRedirect {
+  id             String      @id @default(uuid())
+  session        LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId      String
+  workspace      Workspace   @relation("RedirectWorkspace", fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId    String
+  correctedBy    User        @relation(fields: [correctedById], references: [id], onDelete: Cascade)
+  correctedById  String
+  instruction    String
+  context        String
+  evidence       String
+  agentStep      String?
+  resultingState String?
+  createdAt      DateTime    @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([correctedById, createdAt])
+}
+
+model SkillEntry {
+  id              String        @id @default(uuid())
+  workspace       Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId     String
+  sourceSession   LiveSession?  @relation(fields: [sourceSessionId], references: [id], onDelete: SetNull)
+  sourceSessionId String?
+  createdBy       User          @relation("SkillCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  createdById     String
+  supersedes      SkillEntry?   @relation("SkillVersions", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersedesId    String?
+  supersededBy    SkillEntry[]  @relation("SkillVersions")
+  stableId        String
+  title           String
+  category        String?
+  rule            String
+  rationale       String
+  trigger         String
+  example         String
+  confidence      Float?
+  status          String        @default("TENTATIVE") // TENTATIVE | CONFIRMED | REJECTED | SUPERSEDED
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  reviews         SkillReview[]
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, stableId])
+  @@index([sourceSessionId, status])
+}
+
+model SkillReview {
+  id         String     @id @default(uuid())
+  skill      SkillEntry @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  skillId    String
+  reviewer   User       @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewerId String
+  decision   String     // TENTATIVE | CONFIRMED | REJECTED | SUPERSEDED
+  context    String?
+  createdAt  DateTime   @default(now())
+
+  @@index([skillId, createdAt])
+  @@index([reviewerId, decision])
 }
 
 model AgentEvent {
-  id          String   @id @default(uuid())
-  type        String   // e.g., TASK_CREATED, TASK_UPDATED, MESSAGE_SENT
-  payload     String   // JSON stored as string
+  id          String     @id @default(uuid())
+  type        String     // e.g., TASK_CREATED, TASK_UPDATED, MESSAGE_SENT
+  payload     String     // JSON stored as string
   agentTask   AgentTask? @relation("AgentTaskEvents", fields: [agentTaskId], references: [id])
   agentTaskId String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime   @default(now())
 }
 
 model ToolExecution {
-  id          String   @id @default(uuid())
+  id          String     @id @default(uuid())
   toolName    String
-  input       String   // JSON stored as string
-  result      String?  // JSON stored as string
-  allowed     Boolean  @default(true)
+  input       String     // JSON stored as string
+  result      String?    // JSON stored as string
+  allowed     Boolean    @default(true)
   workspaceId String
   userId      String?
-  status      String   // e.g., SUCCESS, FAILURE
+  status      String     // e.g., SUCCESS, FAILURE
   agentTask   AgentTask? @relation("ToolExecutions", fields: [agentTaskId], references: [id])
   agentTaskId String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime   @default(now())
 }
 
 model AppWorkspace {
-  id          String   @id @default(uuid())
+  id          String          @id @default(uuid())
   name        String
   description String?
-  slug        String?  @unique
-  workspace   Workspace @relation("AppWorkspaces", fields: [workspaceId], references: [id])
+  slug        String?         @unique
+  workspace   Workspace       @relation("AppWorkspaces", fields: [workspaceId], references: [id])
   workspaceId String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   deployments AppDeployment[] @relation("AppDeployments")
-  accesses    AppAccess[] @relation("AppAccesses")
+  accesses    AppAccess[]     @relation("AppAccesses")
 }
 
 model AppDeployment {
-  id            String   @id @default(uuid())
-  version       String
-  status        String   // e.g., DEPLOYING, DEPLOYED, FAILED
-  appWorkspace  AppWorkspace @relation("AppDeployments", fields: [appWorkspaceId], references: [id])
+  id             String       @id @default(uuid())
+  version        String
+  status         String       // e.g., DEPLOYING, DEPLOYED, FAILED
+  appWorkspace   AppWorkspace @relation("AppDeployments", fields: [appWorkspaceId], references: [id])
   appWorkspaceId String
-  deployedAt    DateTime @default(now())
+  deployedAt     DateTime     @default(now())
 }
 
 model AppAccess {
-  id          String   @id @default(uuid())
-  user        User     @relation("User", fields: [userId], references: [id])
-  userId      String
-  appWorkspace AppWorkspace @relation("AppAccesses", fields: [appWorkspaceId], references: [id])
+  id             String       @id @default(uuid())
+  user           User         @relation("User", fields: [userId], references: [id])
+  userId         String
+  appWorkspace   AppWorkspace @relation("AppAccesses", fields: [appWorkspaceId], references: [id])
   appWorkspaceId String
-  grantedAt   DateTime @default(now())
-  grantedBy   User     @relation("GrantedBy", fields: [grantedById], references: [id])
-  grantedById String
+  grantedAt      DateTime     @default(now())
+  grantedBy      User         @relation("GrantedBy", fields: [grantedById], references: [id])
+  grantedById    String
 }
 
 model UsageLog {
-  id          String   @id @default(uuid())
-  action      String   // e.g., LOGIN, CREATE_WORKSPACE, SEND_MESSAGE
-  user        User?    @relation("UsageLogs", fields: [userId], references: [id])
+  id          String     @id @default(uuid())
+  action      String     // e.g., LOGIN, CREATE_WORKSPACE, SEND_MESSAGE
+  user        User?      @relation("UsageLogs", fields: [userId], references: [id])
   userId      String?
   workspace   Workspace? @relation("UsageLogsWorkspace", fields: [workspaceId], references: [id])
   workspaceId String?
-  metadata    String?  // JSON stored as string
-  timestamp   DateTime @default(now())
+  metadata    String?    // JSON stored as string
+  timestamp   DateTime   @default(now())
 }
 
 model AuditLog {
-  id          String   @id @default(uuid())
-  action      String   // e.g., USER_CREATED, WORKSPACE_DELETED
-  user        User?    @relation("AuditLogs", fields: [userId], references: [id])
+  id          String     @id @default(uuid())
+  action      String     // e.g., USER_CREATED, WORKSPACE_DELETED
+  user        User?      @relation("AuditLogs", fields: [userId], references: [id])
   userId      String?
   workspace   Workspace? @relation("AuditLogsWorkspace", fields: [workspaceId], references: [id])
   workspaceId String?
-  details     String?  // JSON stored as string
-  timestamp   DateTime @default(now())
+  details     String?    // JSON stored as string
+  timestamp   DateTime   @default(now())
 }
 
 model ProviderCredential {
-  id           String   @id @default(uuid())
-  kind         String   // BYOK | CLI_OAUTH
-  provider     String   // claude | gemini | openai
-  label        String?
-  secretEnc    String   // AES-256-GCM encrypted payload (iv:cipher:tag hex)
-  status       String   @default("ACTIVE") // ACTIVE | REVOKED
-  user         User?    @relation(fields: [userId], references: [id])
-  userId       String?
-  workspace    Workspace? @relation(fields: [workspaceId], references: [id])
-  workspaceId  String?
-  createdById  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String     @id @default(uuid())
+  kind        String     // BYOK | CLI_OAUTH
+  provider    String     // claude | gemini | openai
+  label       String?
+  secretEnc   String     // AES-256-GCM encrypted payload (iv:cipher:tag hex)
+  status      String     @default("ACTIVE") // ACTIVE | REVOKED
+  user        User?      @relation(fields: [userId], references: [id])
+  userId      String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+  workspaceId String?
+  createdById String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   @@index([provider, status])
   @@index([workspaceId, provider])
@@ -287,58 +426,203 @@ model ProviderCredential {
 }
 
 model ConnectorSync {
-  id          String   @id @default(uuid())
-  connector   String   // drive | jira | slack | tribal
+  id          String    @id @default(uuid())
+  connector   String    // drive | jira | slack | tribal
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
   workspaceId String
   targetPath  String
-  fileCount   Int      @default(0)
-  status      String   @default("COMPLETED") // COMPLETED | FAILED
+  fileCount   Int       @default(0)
+  status      String    @default("COMPLETED") // COMPLETED | FAILED
   detail      String?
   createdById String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([workspaceId, connector])
+}
+
+/// Per-workspace consent record — must exist and have enabled=true before the
+/// background scheduler will automatically sync any connector for this workspace.
+model ConnectorOptIn {
+  id          String    @id @default(uuid())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String    @unique
+  enabled     Boolean   @default(false)   // explicit opt-in gate
+  enabledBy   String?                     // userId who toggled it on
+  intervalMin Int       @default(60)      // sync cadence in minutes (default: 1 h)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+/// Persistent record of every document/message ingested by a connector.
+/// Used for delta-sync (skip unchanged items), deduplication, and the
+/// Phase 3 synthesis candidate pipeline.
+model IngestedItem {
+  id           String    @id @default(uuid())
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId  String
+  connector    String    // drive | jira | slack
+  externalId   String    // Drive fileId / Jira issue key / Slack channel+ts
+  brainPath    String    // Relative path written in workspace Brain
+  contentHash  String    // SHA-256 of raw content — skip write if unchanged
+  byteSize     Int       @default(0)
+  ingestedAt   DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([workspaceId, connector, externalId])
+  @@index([workspaceId, connector])
+  @@index([workspaceId, ingestedAt])
 }
 
 /// Persistent record of a single Drive file (or folder) connected to a workspace Brain path.
 /// Tokens are stored AES-256-GCM encrypted (same vault as ProviderCredential).
 model SourceConnection {
-  id              String    @id @default(uuid())
-  provider        String    // "drive"
-  externalFileId  String    // Google Drive file/folder ID
-  externalName    String    // Display name at time of connection
-  mimeType        String?   // Google mimeType of the file
-  brainPath       String    // Relative path written into the workspace Brain
-  workspaceId     String
-  userId          String
-  accessTokenEnc  String    // AES-256-GCM encrypted access token
-  refreshTokenEnc String?   // AES-256-GCM encrypted refresh token (null if not issued)
-  lastSyncedAt    DateTime?
+  id               String    @id @default(uuid())
+  provider         String    // "drive"
+  externalFileId   String    // Google Drive file/folder ID
+  externalName     String    // Display name at time of connection
+  mimeType         String?   // Google mimeType of the file
+  brainPath        String    // Relative path written into the workspace Brain
+  workspaceId      String
+  userId           String
+  accessTokenEnc   String    // AES-256-GCM encrypted access token
+  refreshTokenEnc  String?   // AES-256-GCM encrypted refresh token (null if not issued)
+  lastSyncedAt     DateTime?
   remoteModifiedAt DateTime? // Last known modifiedTime from Drive API
-  status          String    @default("active") // active | reconnect_required
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  status           String    @default("active") // active | reconnect_required
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([workspaceId, provider])
   @@index([externalFileId, workspaceId])
 }
 
+/// Persistent Jira instance connection for a workspace.
+/// Stores OAuth access token (encrypted) and JQL query for periodic syncing.
+/// One connection per Jira instance + user email combination per workspace.
+model JiraConnection {
+  id           String    @id @default(uuid())
+  provider     String    @default("jira")
+  workspaceId  String
+  userId       String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user         User      @relation("JiraConnections", fields: [userId], references: [id])
+  baseUrl      String    // Jira base URL (e.g., https://company.atlassian.net)
+  email        String    // Email used for authentication
+  apiTokenEnc  String    // AES-256-GCM encrypted API token
+  jql          String    @default("") // JQL query (e.g., "ORDER BY updated DESC")
+  targetPath   String    @default("connectors/jira")
+  lastSyncedAt DateTime?
+  syncStatus   String    @default("active") // active | sync_failed | auth_failed
+  lastError    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([workspaceId, baseUrl, email])
+  @@index([workspaceId, provider])
+  @@index([userId, provider])
+}
+
+/// Persistent Slack workspace connection for a workspace.
+/// Stores OAuth access token (encrypted), workspace ID, and selected channels for archiving.
+/// One connection per Slack workspace per workspace.
+model SlackConnection {
+  id               String    @id @default(uuid())
+  provider         String    @default("slack")
+  workspaceId      String
+  userId           String
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user             User      @relation("SlackConnections", fields: [userId], references: [id])
+  slackWorkspaceId String    // Slack workspace/team ID (e.g., T0123456)
+  slackTeamName    String    // Slack team name at time of connection
+  accessTokenEnc   String    // AES-256-GCM encrypted bot/user access token
+  channels         String    @default("[]") // JSON array of channel IDs to sync: ["C123", "C456"]
+  archiveFormat    String    @default("raw") // raw | threaded (how to structure messages)
+  targetPath       String    @default("connectors/slack")
+  lastSyncedAt     DateTime?
+  syncStatus       String    @default("active") // active | sync_failed | auth_failed
+  lastError        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([workspaceId, slackWorkspaceId])
+  @@index([workspaceId, provider])
+  @@index([userId, provider])
+}
+
+/// Tribal Memory Entry — internal knowledge capture without external API sync
+/// Each entry captures organization knowledge: decisions, best practices, lessons learned
+/// Entries are searchable and can be exported to Brain path for agent access
+model TribalMemoryEntry {
+  id                 String              @id @default(uuid())
+  workspace          Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId        String
+  author             User                @relation("TribalMemoryAuthor", fields: [authorId], references: [id])
+  authorId           String
+  title              String              // Entry title
+  content            String              // Markdown content
+  tags               String              @default("[]") // JSON array: ["decision", "best-practice", "lesson-learned"]
+  searchText         String?             // Denormalized text for full-text search (title + content + tags)
+  status             String              @default("ACTIVE") // ACTIVE | SUPERSEDED | ARCHIVED
+  supersedes         TribalMemoryEntry?  @relation("TribalMemoryVersions", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersedesId       String?
+  supersededBy       TribalMemoryEntry[] @relation("TribalMemoryVersions")
+  source             String              @default("manual") // manual | auto_distilled
+  sourceCandidateId  String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, tags])
+  @@index([workspaceId, status])
+  @@index([workspaceId, supersedesId])
+}
+
+/// Candidate fact or decision distilled from connector-ingested documents and messages.
+/// Follows the TENTATIVE -> CONFIRMED / REJECTED / SUPERSEDED judgment loop.
+model KnowledgeCandidate {
+  id              String    @id @default(uuid())
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId     String
+  title           String
+  summary         String
+  content         String    // Structured knowledge or markdown
+  category        String?   // decision | architecture | guideline | lesson-learned
+  tags            String    @default("[]") // JSON array
+  sourceItemIds   String    @default("[]") // JSON array of IngestedItem IDs
+  sourceConnector String?   // drive | jira | slack | multi
+  confidence      Float     @default(0.8)
+  status          String    @default("TENTATIVE") // TENTATIVE | CONFIRMED | REJECTED | SUPERSEDED
+  suggestedAction String    @default("CREATE") // CREATE | UPDATE | SUPERSEDE
+  targetEntryId   String?   // Existing TribalMemoryEntry ID if SUPERSEDE or UPDATE
+  dedupHash       String?   // Content fingerprint for deduplication
+  reviewedBy      User?     @relation("CandidateReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  promotedEntryId String?   // ID of created TribalMemoryEntry upon confirmation
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, dedupHash])
+  @@index([workspaceId, createdAt])
+}
+
 model ProposedChange {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   workspaceId     String
   filePath        String
   proposedBy      String
-  user            User     @relation("ProposedChanges", fields: [proposedBy], references: [id])
-  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  user            User      @relation("ProposedChanges", fields: [proposedBy], references: [id])
+  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED
   originalContent String
   proposedContent String
   diff            String
   description     String?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
   reviewedBy      String?
-  reviewer        User?    @relation("ReviewedChanges", fields: [reviewedBy], references: [id])
+  reviewer        User?     @relation("ReviewedChanges", fields: [reviewedBy], references: [id])
   reviewedAt      DateTime?
   rejectionReason String?
 

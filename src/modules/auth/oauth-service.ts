@@ -107,7 +107,7 @@ export function googleAuthUrl(state = 'login'): string {
 }
 
 export function googleCallbackUrl(): string {
-  return `http://localhost:${config.port}/api/auth/google/callback`;
+  return config.googleRedirectUri;
 }
 
 export async function handleGoogleCallback(code: string): Promise<OAuthProfile> {

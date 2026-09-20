@@ -14,13 +14,13 @@ export function generateDashboardTemplate(options: TemplateOptions): Record<stri
 
   // Extract substantive domain rules, fields, and metrics from workspace knowledge
   const extractedItems: Array<{ label: string; value: string }> = [];
-  for (const [filename, content] of Object.entries(data)) {
+  for (const [_filename, content] of Object.entries(data)) {
     if (typeof content === 'string') {
       const lines = content.split('\n');
       for (const line of lines) {
         if (line.includes(':') || line.includes('=')) {
           const parts = line.includes(':') ? line.split(':') : line.split('=');
-          const key = parts[0].replace(/^[#\s\-\*]+/, '').trim();
+          const key = parts[0].replace(/^[#\s\-*]+/, '').trim();
           const val = parts.slice(1).join(line.includes(':') ? ':' : '=').trim();
           if (key && val && key.length < 50 && val.length < 150) {
             extractedItems.push({ label: key, value: val });

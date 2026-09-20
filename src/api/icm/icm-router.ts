@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
-import { authMiddleware, requireWorkspaceRole, AuthenticatedRequest } from '../../middleware/auth-middleware';
+import { authMiddleware, AuthenticatedRequest } from '../../middleware/auth-middleware';
 import { WorkspaceStorage } from '../../modules/storage/workspace-storage';
-import { ICM_TEMPLATE_REGISTRY, IcmTemplateDefinition, seedIcmTemplateById } from '../../modules/storage/icm-registry';
+import { ICM_TEMPLATE_REGISTRY, seedIcmTemplateById } from '../../modules/storage/icm-registry';
 
 export function createIcmRouter(storageResolver?: (workspaceId: string) => WorkspaceStorage): Router {
   const router = Router({ mergeParams: true });

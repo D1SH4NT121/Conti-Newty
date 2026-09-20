@@ -1,5 +1,5 @@
 import { WorkspaceStorage } from './workspace-storage';
-import { ICM_TEMPLATE_FILES, IcmFileDefinition, seedWorkspaceIcmTemplate } from './icm-templates';
+import { ICM_TEMPLATE_FILES, IcmFileDefinition } from './icm-templates';
 
 export interface IcmTemplateDefinition {
   id: string;

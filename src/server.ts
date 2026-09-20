@@ -13,7 +13,7 @@ export function startServer(port: number = config.port) {
   const { io, presenceManager } = createSocketServer(server);
   app.set('io', io);
 
-  server.listen(port, () => {
+  server.listen(port, '0.0.0.0', () => {
     console.log(`Workbench HTTP & WebSocket Server running at http://localhost:${port}`);
   });
 

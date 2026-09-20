@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import AdmZip from 'adm-zip';
 
 jest.mock('@aws-sdk/client-s3');
 jest.mock('@aws-sdk/s3-request-presigner');
@@ -64,5 +65,27 @@ describe('S3 Workspace Archive Export/Import', () => {
       expect.any(GetObjectCommand),
       { expiresIn: 900 }
     );
+  });
+
+  it('imports an archive from an S3 object key', async () => {
+    const sourceZip = new AdmZip();
+    sourceZip.addFile('restored/hello.txt', Buffer.from('world'));
+    const storage = new WorkspaceStorage('test-import', path.resolve(__dirname, 'scratch/test-import'));
+    const archive = new WorkspaceArchiveManager(storage);
+    const mockS3ClientInstance = (S3Client as jest.Mock).mock.instances[0] as any;
+    mockS3ClientInstance.send.mockResolvedValue({
+      Body: {
+        transformToByteArray: async () => sourceZip.toBuffer()
+      }
+    });
+
+    const result = await archive.importZip('archives/source.zip');
+
+    expect(result).toEqual({ importedCount: 1, files: ['restored/hello.txt'] });
+    expect(fs.readFileSync(path.join(storage.getWorkspaceRoot(), 'restored/hello.txt'), 'utf8')).toBe('world');
+    expect(GetObjectCommand).toHaveBeenCalledWith({
+      Bucket: 'test-bucket',
+      Key: 'archives/source.zip'
+    });
   });
 });

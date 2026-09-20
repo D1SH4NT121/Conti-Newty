@@ -113,7 +113,7 @@ export function createAppRouter(
       const appBaseDir = path.join(storage.workspaceRoot, 'apps', appId);
 
       const requestedSubPath = req.params[0] || 'index.html';
-      const safeRelative = path.normalize(requestedSubPath).replace(/^(\.\.[\/\\])+/, '');
+      const safeRelative = path.normalize(requestedSubPath).replace(/^(\.\.[/\\])+/, '');
       const targetFilePath = path.resolve(appBaseDir, safeRelative);
 
       // Deny Path Traversal

@@ -7,7 +7,7 @@ coverage/
 .env.local
 .DS_Store
 Thumbs.db
-workspaces/
+/workspaces/
 test-brain-workspace/
 test-api-workspace/
 test-e2e-workspace/
@@ -20,4 +20,16 @@ walkthrough.md
 .originkit/
 apps/web/node_modules/
 apps/web/dist/
-
+.idea/
+.kilo/
+*.json-task
+*-task*.json
+prod-db-secret.json
+ecs-*.json
+pg-*.json
+prisma-*.json
+network-test-task.json
+direct-migrator.json
+api-task*.json
+*.sqlite-backup
+project-files.txt

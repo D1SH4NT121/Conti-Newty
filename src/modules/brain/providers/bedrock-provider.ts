@@ -59,56 +59,64 @@ export class BedrockProvider implements LLMProvider {
       } : undefined;
 
       const command = new ConverseStreamCommand({
-        modelId: params.model || 'anthropic.claude-3-haiku-20240307-v1:0',
+        modelId: params.model || process.env.BEDROCK_MODEL_ID || 'amazon.nova-pro-v1:0',
         messages: bedrockMessages,
         system: params.systemPrompt ? [{ text: params.systemPrompt }] : undefined,
         toolConfig
       });
 
-      const response = await this.client.send(command);
-      
-      let textContent = '';
-      const toolCallsMap = new Map<number, { id: string, name: string, inputStr: string }>();
-      let stopReason = 'end_turn';
+      try {
+        const response = await this.client.send(command);
+        
+        let textContent = '';
+        const toolCallsMap = new Map<number, { id: string, name: string, inputStr: string }>();
+        let stopReason = 'end_turn';
 
-      if (response.stream) {
-        for await (const chunk of response.stream) {
-          if (chunk.contentBlockStart?.start?.toolUse) {
-            const tu = chunk.contentBlockStart.start.toolUse;
-            toolCallsMap.set(chunk.contentBlockStart.contentBlockIndex!, {
-              id: tu.toolUseId!,
-              name: tu.name!,
-              inputStr: ''
-            });
-          }
-          if (chunk.contentBlockDelta?.delta?.text) {
-            textContent += chunk.contentBlockDelta.delta.text;
-          }
-          if (chunk.contentBlockDelta?.delta?.toolUse) {
-             const idx = chunk.contentBlockDelta.contentBlockIndex!;
-             const tu = toolCallsMap.get(idx);
-             if (tu) {
-               tu.inputStr += chunk.contentBlockDelta.delta.toolUse.input || '';
-             }
-          }
-          if (chunk.messageStop?.stopReason) {
-             stopReason = chunk.messageStop.stopReason === 'tool_use' ? 'tool_use' : chunk.messageStop.stopReason;
+        if (response.stream) {
+          for await (const chunk of response.stream) {
+            if (chunk.contentBlockStart?.start?.toolUse) {
+              const tu = chunk.contentBlockStart.start.toolUse;
+              toolCallsMap.set(chunk.contentBlockStart.contentBlockIndex!, {
+                id: tu.toolUseId!,
+                name: tu.name!,
+                inputStr: ''
+              });
+            }
+            if (chunk.contentBlockDelta?.delta?.text) {
+              textContent += chunk.contentBlockDelta.delta.text;
+            }
+            if (chunk.contentBlockDelta?.delta?.toolUse) {
+               const idx = chunk.contentBlockDelta.contentBlockIndex!;
+               const tu = toolCallsMap.get(idx);
+               if (tu) {
+                 tu.inputStr += chunk.contentBlockDelta.delta.toolUse.input || '';
+               }
+            }
+            if (chunk.messageStop?.stopReason) {
+               stopReason = chunk.messageStop.stopReason === 'tool_use' ? 'tool_use' : chunk.messageStop.stopReason;
+            }
           }
         }
+
+        const toolCalls: AIToolCall[] = Array.from(toolCallsMap.values()).map(tu => ({
+          id: tu.id,
+          name: tu.name,
+          input: JSON.parse(tu.inputStr || '{}')
+        }));
+
+        return {
+          content: textContent,
+          toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+          stopReason,
+          provider: this.name
+        };
+      } catch (err: any) {
+        if (isSimulationAllowed()) {
+          console.warn(`[Bedrock Engine] AWS Bedrock call failed (${err.message}). Falling back to simulation mode.`);
+          return this.runTestSimulation(params);
+        }
+        throw err;
       }
-
-      const toolCalls: AIToolCall[] = Array.from(toolCallsMap.values()).map(tu => ({
-        id: tu.id,
-        name: tu.name,
-        input: JSON.parse(tu.inputStr || '{}')
-      }));
-
-      return {
-        content: textContent,
-        toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-        stopReason,
-        provider: this.name
-      };
     }
 
     if (!isSimulationAllowed()) {

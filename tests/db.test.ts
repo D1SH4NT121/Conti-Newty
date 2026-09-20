@@ -112,4 +112,29 @@ describe('Database Connection and CRUD Operations', () => {
 
     expect(workspaceWithOrg?.organization.name).toBe('Test Org for Relations');
   });
+
+  test('should create a live session with a Driver participant', async () => {
+    const org = await prisma.organization.create({ data: { name: 'Live Session Org' } });
+    const user = await prisma.user.create({
+      data: { email: 'driver@example.com', name: 'Driver', passwordHash: 'hash', organizationId: org.id },
+    });
+    const workspace = await prisma.workspace.create({
+      data: { name: 'Live Session Workspace', organizationId: org.id },
+    });
+    const session = await prisma.liveSession.create({
+      data: {
+        workspaceId: workspace.id,
+        createdById: user.id,
+        currentDriverId: user.id,
+        title: 'Refund review',
+        goal: 'Review refund policy',
+        status: 'CREATED',
+      },
+    });
+    const participant = await prisma.sessionParticipant.create({
+      data: { sessionId: session.id, userId: user.id, role: 'DRIVER', status: 'CONNECTED' },
+    });
+    expect(session.status).toBe('CREATED');
+    expect(participant).toMatchObject({ sessionId: session.id, userId: user.id, role: 'DRIVER' });
+  });
 });

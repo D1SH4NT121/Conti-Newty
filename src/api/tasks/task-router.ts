@@ -5,6 +5,7 @@ import { AgentRunner } from '../../modules/brain/agent-runner';
 import { BrainTools } from '../../modules/brain/brain-tools';
 import { WorkspaceStorage } from '../../modules/storage/workspace-storage';
 import { AuthorizationGuard } from '../../modules/auth/authorization-guard';
+import { config } from '../../config';
 
 export function createTaskRouter(storageResolver?: (workspaceId: string) => WorkspaceStorage): Router {
   const router = Router({ mergeParams: true });
@@ -57,12 +58,15 @@ export function createTaskRouter(storageResolver?: (workspaceId: string) => Work
         }
       });
 
+      const defaultAgents = [{ role: 'Researcher', provider: config.aiProvider }];
+      const taskAgents = agents && agents.length > 0 ? agents : defaultAgents;
+
       const io = req.app.get('io');
       if (io) {
         io.to(`workspace:${workspaceId}`).emit('task.created', {
           id: task.id, title: task.title, status: task.status,
           createdAt: task.createdAt, workspaceId,
-          agents: agents || [{ role: 'Researcher', provider: 'claude' }]
+          agents: taskAgents
         });
       }
 
@@ -74,7 +78,7 @@ export function createTaskRouter(storageResolver?: (workspaceId: string) => Work
         workspaceId,
         userId: req.user!.id,
         userPrompt: prompt,
-        agents: agents || undefined
+        agents: taskAgents
       });
 
       if (io) {

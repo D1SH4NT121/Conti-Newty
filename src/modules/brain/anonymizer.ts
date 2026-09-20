@@ -35,7 +35,7 @@ export class DataAnonymizer {
     };
 
     // 1. Redact Secret Keys & Tokens (Bearer tokens, api keys)
-    const secretRegex = /\b(?:sk-[a-zA-Z0-9_\-]{16,}|Bearer\s+[a-zA-Z0-9_\-\.]{20,}|ghp_[a-zA-Z0-9]{20,})\b/g;
+    const secretRegex = /\b(?:sk-[a-zA-Z0-9_-]{16,}|Bearer\s+[a-zA-Z0-9_.-]{20,}|ghp_[a-zA-Z0-9]{20,})\b/g;
     sanitized = sanitized.replace(secretRegex, (match) => {
       const redacted = '[REDACTED_SECRET_KEY]';
       recordRedaction('SECRET', match, redacted);
@@ -107,7 +107,7 @@ export class DataAnonymizer {
       title?: string;
     }
   ): string {
-    const { sanitizedText, redactions, totalRedactions } = this.anonymize(originalMarkdown, options);
+    const { sanitizedText, totalRedactions } = this.anonymize(originalMarkdown, options);
 
     const reportHeader = `> **Confidential Document - Anonymized for External Sharing**  
 > Sanitized by Conti-Newty Company Brain with ${totalRedactions} sensitive data points redacted.

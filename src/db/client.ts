@@ -8,6 +8,7 @@ import { PrismaClient } from '@prisma/client';
 
 declare global {
   // Allow global `__db` to be of type `PrismaClient | undefined`
+  // eslint-disable-next-line no-var
   var __db: PrismaClient | undefined;
 }
 

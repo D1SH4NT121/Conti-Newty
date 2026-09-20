@@ -11,6 +11,8 @@ export interface AuthenticatedRequest extends Request {
     name?: string | null;
     avatarUrl?: string | null;
     role?: string;
+    lastWorkspaceId?: string | null;
+    organizationId?: string | null;
   };
   workspaceMember?: {
     role: string;
@@ -25,11 +27,19 @@ export async function authMiddleware(
 ) {
   const r = req as AuthenticatedRequest;
   try {
+    if (r.user) {
+      return next();
+    }
+
     const authHeader = req.headers.authorization;
     const directUserId = req.headers['x-user-id'] as string;
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
+      if (token.startsWith('cnty_mcp_')) {
+        // Dedicated MCP token handled by mcpAuthMiddleware
+        return next();
+      }
       const user = await authService.getUserFromToken(token);
       if (user) {
         r.user = {
@@ -37,7 +47,9 @@ export async function authMiddleware(
           email: user.email,
           name: user.name || '',
           avatarUrl: user.avatarUrl || null,
-          role: user.role || 'USER'
+          role: user.role || 'USER',
+          lastWorkspaceId: user.lastWorkspaceId,
+          organizationId: user.organizationId
         };
         return next();
       }
@@ -51,7 +63,9 @@ export async function authMiddleware(
           email: user.email,
           name: user.name || '',
           avatarUrl: user.avatarUrl || null,
-          role: user.role || 'USER'
+          role: user.role || 'USER',
+          lastWorkspaceId: user.lastWorkspaceId,
+          organizationId: user.organizationId
         };
         return next();
       }
@@ -80,7 +94,12 @@ export function requireWorkspaceRole(minRole: 'viewer' | 'member' | 'admin' = 'v
         return res.status(401).json({ error: 'Unauthorized: User not authenticated' });
       }
 
-      const workspaceId = req.params.workspaceId || req.params.id || req.body?.workspaceId;
+      const workspaceId =
+        req.params.workspaceId ||
+        req.params.id ||
+        (req as any).workspaceId ||
+        (req.headers['x-workspace-id'] as string) ||
+        req.body?.workspaceId;
       if (!workspaceId) {
         return res.status(400).json({ error: 'Workspace ID is required' });
       }
@@ -114,12 +133,18 @@ export function requireWorkspaceRole(minRole: 'viewer' | 'member' | 'admin' = 'v
         workspaceId
       };
 
-      // Automatically update user's last accessed workspace on every workspace interaction
-      if (r.user?.id && workspaceId) {
-        prisma.user.update({
+      if (!req.params.workspaceId) req.params.workspaceId = workspaceId;
+      if (!req.params.id) req.params.id = workspaceId;
+
+      // Update user's last accessed workspace if it changed
+      if (r.user?.id && workspaceId && r.user.lastWorkspaceId !== workspaceId) {
+        r.user.lastWorkspaceId = workspaceId;
+        await prisma.user.update({
           where: { id: r.user.id },
           data: { lastWorkspaceId: workspaceId }
-        }).catch(() => {});
+        }).catch((_e) => {
+          // Ignore non-critical lastWorkspaceId update failure
+        });
       }
 
       return next();

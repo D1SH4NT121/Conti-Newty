@@ -151,7 +151,7 @@ export class WorkspaceStorage {
     }
   }
 
-  public async listDirectory(relativeDirPath: string = ''): Promise<FileInfo[]> {
+  public async listDirectory(relativeDirPath = ''): Promise<FileInfo[]> {
     const targetDir = this.resolveSafePath(relativeDirPath);
     if (!fs.existsSync(targetDir)) {
       return [];

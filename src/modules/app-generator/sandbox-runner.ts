@@ -25,7 +25,7 @@ export class SandboxRunner {
 
     const server = http.createServer((req, res) => {
       const requestedUrl = req.url === '/' || !req.url ? '/index.html' : req.url.split('?')[0];
-      const safeRelative = path.normalize(requestedUrl).replace(/^(\.\.[\/\\])+/, '');
+      const safeRelative = path.normalize(requestedUrl).replace(/^(\.\.[/\\])+/, '');
       const filePath = path.join(appFilesDir, safeRelative);
 
       if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
@@ -92,7 +92,7 @@ export class SandboxRunner {
   }
 
   public stopAll(): void {
-    for (const [id, sandbox] of this.activeSandboxes.entries()) {
+    for (const [_id, sandbox] of this.activeSandboxes.entries()) {
       try {
         sandbox.server.close();
       } catch {

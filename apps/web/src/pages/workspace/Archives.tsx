@@ -15,15 +15,8 @@ export const Archives: React.FC = () => {
     try {
       setExporting(true);
       setError(null);
-      const blob = await api.downloadWorkspaceZip(workspace.id);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${workspace.name.toLowerCase().replace(/\s+/g, '-')}-archive.zip`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      const url = await api.downloadWorkspaceZip(workspace.id);
+      window.location.assign(url);
     } catch (err: any) {
       setError(err.message || 'Failed to export archive');
     } finally {

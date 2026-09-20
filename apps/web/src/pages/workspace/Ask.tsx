@@ -7,9 +7,10 @@ import { Eye, Users, KeyRound, Plus, X, ChevronDown } from 'lucide-react';
 interface LiveEvent { type: string; payload: any; ts: number; }
 
 const PROVIDERS = [
+  { id: 'gemini', label: 'Gemini (Google)', color: '#60a5fa', bg: 'bg-blue-950/40 border-blue-500/40', dot: 'bg-blue-400' },
+  { id: 'bedrock', label: 'AWS Bedrock (Nova)', color: '#f59e0b', bg: 'bg-amber-950/40 border-amber-500/40', dot: 'bg-amber-400' },
   { id: 'claude', label: 'Claude', color: '#ff7597', bg: 'bg-pink-950/40 border-pink-500/40', dot: 'bg-[#ff7597]' },
   { id: 'openai', label: 'GPT-4o', color: '#10b981', bg: 'bg-emerald-950/40 border-emerald-500/40', dot: 'bg-emerald-400' },
-  { id: 'gemini', label: 'Gemini', color: '#60a5fa', bg: 'bg-blue-950/40 border-blue-500/40', dot: 'bg-blue-400' },
 ];
 
 const PRESET_ROLES = ['Researcher', 'Critic', 'Summarizer', 'Devil\'s Advocate', 'Fact Checker'];
@@ -18,7 +19,7 @@ const providerStyle = (provider: string) =>
   PROVIDERS.find(p => p.id === provider) || PROVIDERS[0];
 
 const DEFAULT_AGENTS: AgentConfig[] = [
-  { role: 'Researcher', provider: 'claude' }
+  { role: 'Researcher', provider: 'gemini' }
 ];
 
 export const Ask: React.FC = () => {

@@ -17,16 +17,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('anti_token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
     api.getMe()
       .then(res => setUser(res.user))
       .catch(() => {
-        api.logout();
         setUser(null);
       })
       .finally(() => setLoading(false));
@@ -52,8 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    api.logout();
-    setUser(null);
+    localStorage.removeItem('anti_token');
   };
 
   return (

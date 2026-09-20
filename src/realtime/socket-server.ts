@@ -28,6 +28,10 @@ export function createSocketServer(httpServer: http.Server) {
   const authService = new AuthService();
   const streamManager = StreamBufferManager.getInstance();
 
+  httpServer.once('close', () => {
+    io.close();
+  });
+
   io.use(async (socket: Socket, next) => {
     try {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
@@ -42,6 +46,16 @@ export function createSocketServer(httpServer: http.Server) {
             role: user.role
           };
         }
+      }
+      if (!socket.data.user) {
+        const anonymousId = String(socket.handshake.auth?.anonymousId || socket.handshake.query?.anonymousId || socket.id)
+          .replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+        socket.data.user = {
+          id: anonymousId,
+          name: String(socket.handshake.auth?.displayName || socket.handshake.query?.displayName || 'Guest').slice(0, 80),
+          email: `${anonymousId}@local.invalid`,
+          role: 'MEMBER'
+        };
       }
     } catch {
       // Allow unauthenticated connection for public rooms if needed
@@ -106,6 +120,7 @@ export function createSocketServer(httpServer: http.Server) {
       socket.to(room).emit('cursor.moved', {
         socketId: socket.id,
         userId,
+        name: userName,
         userName,
         x,
         y,

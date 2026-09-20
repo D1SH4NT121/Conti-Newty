@@ -7,7 +7,6 @@ import { getSocket } from '../lib/socket';
 
 const NAV_ITEMS: { label: string; path: string; icon: string }[] = [
   { label: 'Home', path: 'home', icon: '\u2302' },
-  { label: 'Ask', path: 'ask', icon: '?' },
   { label: 'Live Work', path: 'live', icon: '⚡' },
   { label: 'Work', path: 'work', icon: '\u25EB' },
   { label: 'Corrections', path: 'corrections', icon: '✓' },
@@ -209,8 +208,10 @@ export const WorkspaceShell: React.FC = () => {
           const matched = list.find((w) => w.id === workspaceId);
           if (matched) {
             setCurrentWorkspace(matched);
-          } else if (list.length > 0) {
-            navigate(`/w/${list[0].id}/home`);
+          } else {
+            api.getWorkspace(workspaceId).then(setCurrentWorkspace).catch(() => {
+              if (list.length > 0) navigate(`/w/${list[0].id}/home`);
+            });
           }
         }
       })
@@ -243,7 +244,7 @@ export const WorkspaceShell: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/auth');
+    navigate('/onboarding');
     setMobileSidebarOpen(false);
   };
 
@@ -317,7 +318,7 @@ export const WorkspaceShell: React.FC = () => {
         <div className="pt-4 px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-muted-foreground font-bold">
           Management
         </div>
-        {ADMIN_ITEMS.map((item) => (
+        {user?.role !== 'PUBLIC' && ADMIN_ITEMS.map((item) => (
           <Link
             key={item.path}
             to={`/w/${workspaceId}/${item.path}`}
@@ -355,13 +356,15 @@ export const WorkspaceShell: React.FC = () => {
             </div>
           </div>
         </div>
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 mt-1 text-left text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
-        >
-          <span className="text-sm w-4 text-center shrink-0">↩</span>
-          <span className="font-mono text-xs">Sign out</span>
-        </button>
+        {user?.role !== 'PUBLIC' && (
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2 mt-1 text-left text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
+          >
+            <span className="text-sm w-4 text-center shrink-0">↩</span>
+            <span className="font-mono text-xs">Sign out</span>
+          </button>
+        )}
       </div>
     </div>
   );

@@ -42,6 +42,12 @@ export class SessionRunner {
     return ctrl;
   }
 
+  private static async waitWhilePaused(ctrl: ActiveSessionControl): Promise<void> {
+    while (ctrl.isPaused && !ctrl.isCancelled) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+
   public static async submitRedirect(
     arg1: string,
     arg2: string | { userId: string; instruction: string; evidence?: string; force?: boolean },
@@ -120,9 +126,23 @@ export class SessionRunner {
     await recordSessionAudit(session.workspaceId, userId, 'SESSION_PAUSED', { sessionId });
   }
 
-  public static async resume(sessionId: string, userId: string): Promise<void> {
+  public static async resume(
+    sessionId: string,
+    userId: string,
+    workspaceId?: string,
+    storage?: WorkspaceStorage,
+    io?: any
+  ): Promise<void> {
     const ctrl = this.controls.get(sessionId);
-    if (ctrl) ctrl.isPaused = false;
+    if (ctrl) {
+      ctrl.isPaused = false;
+    } else {
+      if (!workspaceId || !storage) {
+        throw new Error('Session execution is unavailable; restart the session instead');
+      }
+      await this.start(sessionId, workspaceId, userId, storage, io);
+      return;
+    }
 
     const session = await prisma.liveSession.update({ where: { id: sessionId }, data: { status: 'RUNNING' } });
     await appendSessionEvent({
@@ -281,6 +301,8 @@ export class SessionRunner {
 
       for (let i = 0; i < agents.length; i++) {
         if (ctrl.isCancelled) break;
+        await this.waitWhilePaused(ctrl);
+        if (ctrl.isCancelled) break;
 
         // Check for redirects before step
         while (ctrl.pendingRedirects.length > 0) {
@@ -331,7 +353,7 @@ export class SessionRunner {
         if (io) io.to(`session:${sessionId}`).emit('session.event', stepStartEvent);
 
         // Execute runner turn
-        await runner.runTask({
+        const executionResult = await runner.runTask({
           taskId: task.id,
           workspaceId,
           userId: session.createdById,
@@ -345,7 +367,13 @@ export class SessionRunner {
         const stepCompletedEvent = await appendSessionEvent({
           sessionId,
           type: SessionEventType.AGENT_STEP_COMPLETED,
-          payload: { turnIndex: i, role: agents[i].role }
+          payload: {
+            turnIndex: i,
+            role: agents[i].role,
+            output: executionResult.answer,
+            citations: executionResult.citations,
+            status: executionResult.status
+          }
         });
         if (io) io.to(`session:${sessionId}`).emit('session.event', stepCompletedEvent);
       }

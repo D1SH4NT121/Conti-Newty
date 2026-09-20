@@ -5,9 +5,11 @@ let socketInstance: Socket | null = null;
 export function getSocket(): Socket {
   if (!socketInstance) {
     const token = typeof window !== 'undefined' ? localStorage.getItem('anti_token') : null;
+    const anonymousId = typeof window !== 'undefined' ? localStorage.getItem('anti_anonymous_id') : null;
+    const displayName = typeof window !== 'undefined' ? localStorage.getItem('anti_display_name') : null;
     socketInstance = io(window.location.origin, {
       path: '/socket.io',
-      auth: { token: token || undefined },
+      auth: { token: token || undefined, anonymousId: anonymousId || undefined, displayName: displayName || 'Guest' },
       transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,

@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { prisma } from '../../db/client';
-import { authMiddleware, requireWorkspaceRole, AuthenticatedRequest } from '../../middleware/auth-middleware';
+import { authMiddleware, requireExplicitAuthentication, requireWorkspaceRole, AuthenticatedRequest } from '../../middleware/auth-middleware';
 import { WorkspaceStorage } from '../../modules/storage/workspace-storage';
 import {
   DriveConnector,
@@ -29,6 +29,8 @@ import {
 import {
   slackAuthUrl,
   exchangeCode as slackExchangeCode,
+  fetchSlackWorkspaceInfo,
+  listChannels,
   connectSlack,
   syncSlackConnection,
   syncWorkspaceSlackConnections,
@@ -359,6 +361,30 @@ export function createConnectorRouter(storageResolver?: (workspaceId: string) =>
     return res.json({ url: slackAuthUrl({ state }) });
   });
 
+  // Exchange the one-time OAuth code once so the UI can load the selectable
+  // channels before creating the persistent connection.
+  router.post('/slack/prepare', requireWorkspaceRole('member'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { code } = req.body as { code?: string };
+      if (!code) return res.status(400).json({ error: 'code is required' });
+
+      const accessToken = await slackExchangeCode(code);
+      const [workspaceInfo, channels] = await Promise.all([
+        fetchSlackWorkspaceInfo(accessToken),
+        listChannels(accessToken),
+      ]);
+
+      return res.json({
+        accessToken,
+        slackWorkspaceId: workspaceInfo.workspaceId,
+        slackTeamName: workspaceInfo.teamName,
+        channels,
+      });
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
+    }
+  });
+
   /**
    * POST /slack/connect
    * Body: { code: string, slackWorkspaceId: string, slackTeamName: string, channels: string[], archiveFormat?: string, targetPath?: string }
@@ -371,8 +397,9 @@ export function createConnectorRouter(storageResolver?: (workspaceId: string) =>
   router.post('/slack/connect', requireWorkspaceRole('member'), async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.params.id || req.params.workspaceId;
-      const { code, slackWorkspaceId, slackTeamName, channels, archiveFormat, targetPath } = req.body as {
+      const { code, accessToken, slackWorkspaceId, slackTeamName, channels, archiveFormat, targetPath } = req.body as {
         code?: string;
+        accessToken?: string;
         slackWorkspaceId?: string;
         slackTeamName?: string;
         channels?: string[];
@@ -380,19 +407,19 @@ export function createConnectorRouter(storageResolver?: (workspaceId: string) =>
         targetPath?: string;
       };
 
-      if (!code) return res.status(400).json({ error: 'code is required' });
+      if (!code && !accessToken) return res.status(400).json({ error: 'code or accessToken is required' });
       if (!slackWorkspaceId) return res.status(400).json({ error: 'slackWorkspaceId is required' });
       if (!slackTeamName) return res.status(400).json({ error: 'slackTeamName is required' });
       if (!channels?.length) return res.status(400).json({ error: 'channels (non-empty array) is required' });
 
-      const accessToken = await slackExchangeCode(code);
+      const resolvedAccessToken = accessToken || (await slackExchangeCode(code!));
       const storage = getStorage(workspaceId);
 
       const result = await connectSlack({
         workspaceId,
         userId: req.user!.id,
         storage,
-        accessToken,
+        accessToken: resolvedAccessToken,
         slackWorkspaceId,
         slackTeamName,
         channels,
@@ -524,6 +551,7 @@ export function createConnectorRouter(storageResolver?: (workspaceId: string) =>
    */
   router.get(
     '/auto-sync',
+    requireExplicitAuthentication,
     requireWorkspaceRole('viewer'),
     async (req: AuthenticatedRequest, res: Response) => {
       try {
@@ -544,6 +572,7 @@ export function createConnectorRouter(storageResolver?: (workspaceId: string) =>
    */
   router.post(
     '/auto-sync',
+    requireExplicitAuthentication,
     requireWorkspaceRole('admin'),
     async (req: AuthenticatedRequest, res: Response) => {
       try {
@@ -570,6 +599,7 @@ export function createConnectorRouter(storageResolver?: (workspaceId: string) =>
    */
   router.get(
     '/auto-sync/history',
+    requireExplicitAuthentication,
     requireWorkspaceRole('viewer'),
     async (req: AuthenticatedRequest, res: Response) => {
       try {
@@ -590,6 +620,7 @@ export function createConnectorRouter(storageResolver?: (workspaceId: string) =>
    */
   router.post(
     '/auto-sync/run',
+    requireExplicitAuthentication,
     requireWorkspaceRole('admin'),
     async (req: AuthenticatedRequest, res: Response) => {
       try {

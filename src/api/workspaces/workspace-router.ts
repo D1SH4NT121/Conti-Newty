@@ -41,7 +41,7 @@ export function createWorkspaceRouter(storageResolver?: (workspaceId: string) =>
       });
 
       const orgId = organizationId || user?.organizationId;
-      if (!orgId) return res.status(400).json({ error: 'You must belong to an organization before creating a workspace.' });
+      if (!orgId) return res.status(400).json({ error: 'Public organization is unavailable' });
 
       if (!user?.organizationId && orgId) {
         await prisma.user.update({
@@ -105,6 +105,12 @@ export function createWorkspaceRouter(storageResolver?: (workspaceId: string) =>
         include: { _count: { select: { members: true, threads: true, appWorkspaces: true } } }
       });
       if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+      await prisma.workspaceMember.upsert({
+        where: { userId_workspaceId: { userId: req.user!.id, workspaceId: req.params.id } },
+        update: {},
+        create: { userId: req.user!.id, workspaceId: req.params.id, role: 'member' }
+      });
 
       if (req.user?.id && req.params.id) {
         req.user.lastWorkspaceId = req.params.id;

@@ -32,6 +32,7 @@ import {
 } from '../../lib/socket';
 import { SessionTimeline } from '../../components/workspace/SessionTimeline';
 import { RedirectComposer } from '../../components/workspace/RedirectComposer';
+import { getSocket } from '../../lib/socket';
 
 export const Session: React.FC = () => {
   const { workspaceId, sessionId } = useParams<{ workspaceId: string; sessionId: string }>();
@@ -45,6 +46,9 @@ export const Session: React.FC = () => {
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [distillLoading, setDistillLoading] = useState(false);
   const [distilledSkills, setDistilledSkills] = useState<any[]>([]);
+  const [discussionThread, setDiscussionThread] = useState<any | null>(null);
+  const [discussionMessages, setDiscussionMessages] = useState<any[]>([]);
+  const [discussionDraft, setDiscussionDraft] = useState('');
 
   const loadSession = async () => {
     if (!workspaceId || !sessionId) return;
@@ -62,6 +66,40 @@ export const Session: React.FC = () => {
     loadSession();
   }, [workspaceId, sessionId]);
 
+  useEffect(() => {
+    if (!workspaceId || !sessionId) return;
+    let disposed = false;
+    (async () => {
+      const title = `Live session: ${session?.title || sessionId}`;
+      const threads = await api.listThreads(workspaceId);
+      let thread = threads.find((item: any) => item.title === title);
+      if (!thread) thread = await api.createThread(workspaceId, title);
+      if (disposed) return;
+      setDiscussionThread(thread);
+      setDiscussionMessages(await api.listThreadMessages(workspaceId, thread.id));
+    })().catch(() => {});
+    return () => { disposed = true; };
+  }, [workspaceId, sessionId, session?.title]);
+
+  useEffect(() => {
+    if (!workspaceId || !discussionThread) return;
+    const socket = getSocket();
+    const handleMessage = (message: any) => {
+      if (message.threadId !== discussionThread.id) return;
+      setDiscussionMessages((previous) => previous.some((item) => item.id === message.id) ? previous : [...previous, message]);
+    };
+    socket.on('message.created', handleMessage);
+    return () => { socket.off('message.created', handleMessage); };
+  }, [workspaceId, discussionThread?.id]);
+
+  const sendDiscussionMessage = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!workspaceId || !discussionThread || !discussionDraft.trim()) return;
+    const message = await api.postThreadMessage(workspaceId, discussionThread.id, discussionDraft.trim());
+    setDiscussionMessages((previous) => [...previous, message]);
+    setDiscussionDraft('');
+  };
+
   // Realtime Socket Room Management
   useEffect(() => {
     if (!sessionId || !workspaceId || !user) return;
@@ -75,11 +113,13 @@ export const Session: React.FC = () => {
         const updatedEvents = exists ? prev.events : [...prev.events, event];
 
         let updatedStatus = prev.status;
-        if (event.type === 'session.started') updatedStatus = 'RUNNING';
-        if (event.type === 'session.paused') updatedStatus = 'PAUSED';
-        if (event.type === 'session.resumed') updatedStatus = 'RUNNING';
-        if (event.type === 'session.completed') updatedStatus = 'COMPLETED';
-        if (event.type === 'session.cancelled') updatedStatus = 'CANCELLED';
+        const eventType = String(event.type).toUpperCase().replace(/\./g, '_');
+        if (eventType === 'SESSION_STARTED') updatedStatus = 'RUNNING';
+        if (eventType === 'SESSION_PAUSED') updatedStatus = 'PAUSED';
+        if (eventType === 'SESSION_RESUMED') updatedStatus = 'RUNNING';
+        if (eventType === 'SESSION_COMPLETED') updatedStatus = 'COMPLETED';
+        if (eventType === 'SESSION_FAILED') updatedStatus = 'FAILED';
+        if (eventType === 'SESSION_CANCELLED') updatedStatus = 'CANCELLED';
 
         return {
           ...prev,
@@ -443,6 +483,32 @@ export const Session: React.FC = () => {
 
         {/* Right Column: Steering, Skills, Participants */}
         <div className="lg:col-span-4 p-6 overflow-y-auto space-y-6 bg-card/40">
+          <div className="p-5 bg-card border border-border rounded shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="font-mono text-xs font-bold uppercase tracking-wider">Team discussion</div>
+              <span className="font-mono text-[10px] text-emerald-400">LIVE ROOM</span>
+            </div>
+            <div className="max-h-48 overflow-y-auto space-y-2">
+              {discussionMessages.length === 0 ? (
+                <div className="text-xs text-muted-foreground">Discuss evidence and steer the agent together.</div>
+              ) : discussionMessages.map((message: any) => (
+                <div key={message.id} className="rounded border border-border bg-background p-2">
+                  <div className="font-mono text-[10px] text-primary">{message.author?.name || message.author?.email || 'Collaborator'}</div>
+                  <div className="text-xs text-foreground mt-1 whitespace-pre-wrap">{message.content}</div>
+                </div>
+              ))}
+            </div>
+            <form onSubmit={sendDiscussionMessage} className="flex gap-2">
+              <input
+                value={discussionDraft}
+                onChange={(event) => setDiscussionDraft(event.target.value)}
+                placeholder="Add context for the room..."
+                className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
+              />
+              <button type="submit" disabled={!discussionDraft.trim()} className="rounded bg-foreground px-3 py-1.5 font-mono text-[10px] text-background disabled:opacity-40">SEND</button>
+            </form>
+          </div>
+
           {/* Live Steering Panel */}
           <RedirectComposer
             sessionId={sessionId || ''}

@@ -219,6 +219,23 @@ export function createSessionRouter(storageResolver?: (workspaceId: string) => W
     }
   });
 
+  // Resume a paused session without starting a second execution.
+  router.post('/:sessionId/resume', requireWorkspaceRole('member'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const workspaceId = req.params.id || req.params.workspaceId;
+      const { sessionId } = req.params;
+      const session = await getSession(workspaceId, sessionId, req.user!.id);
+      if (session.currentDriverId !== req.user!.id) {
+        return res.status(403).json({ error: 'Only the current Driver may resume session execution' });
+      }
+
+      await SessionRunner.resume(sessionId, req.user!.id, workspaceId, getStorage(workspaceId), req.app.get('io'));
+      return res.json({ sessionId, status: 'RUNNING' });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
   // Cancel session
   router.post('/:sessionId/cancel', requireWorkspaceRole('member'), async (req: AuthenticatedRequest, res: Response) => {
     try {

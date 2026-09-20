@@ -36,6 +36,15 @@ export const GitRepoPickerModal: React.FC<GitRepoPickerModalProps> = ({
   const [customBranch, setCustomBranch] = useState('main');
   const [error, setError] = useState('');
 
+  const connectGitHub = async () => {
+    try {
+      setError('');
+      window.location.href = await api.getGitHubConnectUrl(workspaceId);
+    } catch (e: any) {
+      setError(e.message || 'Failed to start GitHub authorization');
+    }
+  };
+
   // 1. Check existing GitHub connection on open
   useEffect(() => {
     if (!isOpen) return;
@@ -306,12 +315,13 @@ export const GitRepoPickerModal: React.FC<GitRepoPickerModalProps> = ({
             </button>
           ) : (
             <div className="flex items-center gap-2">
-              <a
-                href="/api/auth/github?return_to=/onboarding"
+              <button
+                type="button"
+                onClick={connectGitHub}
                 className="px-3 py-1.5 rounded-lg bg-white text-black font-mono text-xs font-bold hover:bg-emerald-400 hover:text-black transition-colors flex items-center gap-1.5 shadow-sm"
               >
                 <span>Authorize GitHub OAuth →</span>
-              </a>
+              </button>
             </div>
           )}
         </div>
@@ -393,15 +403,16 @@ export const GitRepoPickerModal: React.FC<GitRepoPickerModalProps> = ({
                     </div>
                   </div>
                   <div className="pt-1">
-                    <a
-                      href="/api/auth/github?return_to=/onboarding"
+                    <button
+                      type="button"
+                      onClick={connectGitHub}
                       className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white text-black font-mono text-xs font-bold hover:bg-emerald-400 hover:text-black transition-colors shadow-lg"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2C6.5 2 2 6.5 2 12c0 4.4 2.9 8.2 6.8 9.5.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .8.1-.7.4-1.1.6-1.4-2.3-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.5-1.4.1-2.8 0 0 .8-.3 2.8 1 .8-.2 1.7-.3 2.5-.3s1.7.1 2.5.3c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.5.1 2.8.6.7 1 1.6 1 2.7 0 3.9-2.3 4.7-4.6 5 .4.3.7 1 .7 2v3c0 .3.2.6.7.5A10 10 0 0 0 22 12c0-5.5-4.5-10-10-10z" />
                       </svg>
                       <span>Sign in with GitHub (OAuth) →</span>
-                    </a>
+                    </button>
                   </div>
                 </div>
               )}

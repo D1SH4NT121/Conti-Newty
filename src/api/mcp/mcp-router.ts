@@ -31,6 +31,8 @@ export function createMcpRouter(
   // Used by Claude Code, Cursor, Claude Desktop, and external AI agents
   router.post('/', mcpAuthMiddleware, async (req: McpAuthenticatedRequest, res: Response) => {
     try {
+      res.setHeader('MCP-Protocol-Version', '2024-11-05');
+      res.setHeader('Cache-Control', 'no-store');
       const workspaceId =
         req.mcp?.workspaceId || req.params.workspaceId || req.params.id;
       const userId = req.mcp?.userId || req.user?.id || 'anonymous-mcp';

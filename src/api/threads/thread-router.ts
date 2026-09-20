@@ -67,6 +67,7 @@ export function createThreadRouter(): Router {
   // Add message to thread
   router.post('/:threadId/messages', requireWorkspaceRole('member'), async (req: AuthenticatedRequest, res: Response) => {
     try {
+      const workspaceId = req.params.id || req.params.workspaceId;
       const { threadId } = req.params;
       const { content } = req.body;
       if (!content) {
@@ -89,6 +90,9 @@ export function createThreadRouter(): Router {
         where: { id: threadId },
         data: { updatedAt: new Date() }
       });
+
+      const io = req.app.get('io');
+      if (io) io.to(`workspace:${workspaceId}`).emit('message.created', message);
 
       return res.status(201).json(message);
     } catch (err: any) {

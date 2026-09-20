@@ -58,7 +58,12 @@ export const LiveWork: React.FC = () => {
     try {
       const res = await api.createSession(workspaceId, {
         title: title.trim(),
-        goal: goal.trim()
+        goal: goal.trim(),
+        agents: [
+          { role: 'Researcher', provider: 'gemini' },
+          { role: 'Critic', provider: 'gemini' },
+          { role: 'Synthesizer', provider: 'gemini' },
+        ]
       });
       setShowCreateModal(false);
       setTitle('');
@@ -142,6 +147,32 @@ export const LiveWork: React.FC = () => {
       )}
 
       {/* Metrics Row */}
+      <div className="p-5 bg-card border border-border rounded shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-wider text-primary font-bold">MULTI-AGENT ROOM</div>
+            <h2 className="font-serif text-xl text-foreground mt-1">A shared brain at work</h2>
+          </div>
+          <span className="font-mono text-[10px] text-emerald-400 border border-emerald-500/30 px-2 py-1">LIVE PRESENCE READY</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+          {[
+            ['Human driver', 'steers the work', 'text-foreground'],
+            ['Researcher', 'finds evidence', 'text-sky-400'],
+            ['Critic', 'tests assumptions', 'text-amber-400'],
+            ['Synthesizer', 'writes the memory', 'text-emerald-400'],
+          ].map(([role, detail, color]) => (
+            <div key={role} className="border border-border bg-background/60 px-3 py-3">
+              <div className={`font-mono text-[10px] font-bold ${color}`}>{role}</div>
+              <div className="text-[11px] text-muted-foreground mt-1">{detail}</div>
+              <div className="flex items-center gap-1.5 mt-3 font-mono text-[9px] text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> awaiting room
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="p-5 bg-card border border-border rounded shadow-sm space-y-2">
           <div className="flex items-center justify-between font-mono text-xs font-bold text-muted-foreground uppercase tracking-wider">

@@ -4,9 +4,11 @@ export class OpenAIProvider implements LLMProvider {
   public readonly name = 'OpenAI Codex / GPT-4o';
   public readonly providerType: ProviderType = 'openai';
   private apiKey?: string;
+  private baseUrl: string;
 
-  constructor(apiKey?: string) {
+  constructor(apiKey?: string, baseUrl = 'https://api.openai.com/v1') {
     this.apiKey = apiKey && apiKey !== 'your_openai_api_key_here' && apiKey !== 'test-key' ? apiKey : undefined;
+    this.baseUrl = baseUrl;
   }
 
   public async complete(params: {
@@ -39,12 +41,18 @@ export class OpenAIProvider implements LLMProvider {
         bodyPayload.tools = formattedTools;
       }
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`
+      };
+      if (this.baseUrl.includes('openrouter')) {
+        headers['HTTP-Referer'] = process.env.OPENROUTER_SITE_URL || 'https://conti-newty.com';
+        headers['X-Title'] = process.env.OPENROUTER_APP_NAME || 'Conti-Newty';
+      }
+
+      const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.apiKey}`
-        },
+        headers,
         body: JSON.stringify(bodyPayload)
       });
 

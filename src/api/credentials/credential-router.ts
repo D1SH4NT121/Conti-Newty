@@ -53,6 +53,13 @@ export function createCredentialRouter(): Router {
         return res.status(400).json({ error: 'Provider and secret are required' });
       }
 
+      if (workspaceId) {
+        const membership = await prisma.workspaceMember.findUnique({
+          where: { userId_workspaceId: { userId, workspaceId } }
+        });
+        if (!membership) return res.status(403).json({ error: 'You do not have access to this workspace' });
+      }
+
       const secretEnc = CredentialVault.encrypt(secret);
 
       const cred = await prisma.providerCredential.create({
@@ -62,7 +69,7 @@ export function createCredentialRouter(): Router {
           label: label || `${provider.toUpperCase()} Key`,
           secretEnc,
           userId: kind === 'BYOK' ? userId : null,
-          workspaceId: kind === 'CLI_OAUTH' ? workspaceId : null,
+          workspaceId: workspaceId || (kind === 'CLI_OAUTH' ? workspaceId : null),
           createdById: userId
         },
         select: {

@@ -249,6 +249,8 @@ export function startScheduler(config: SchedulerConfig = {}): void {
       }
     }
   }, pollMs);
+
+  _timer.unref();
 }
 
 /**

@@ -73,6 +73,23 @@ export const SlackConnector: React.FC<Props> = ({ workspaceId, onConnected, onEr
         const { code } = event.data;
         setOauthCode(code);
         setStep('config');
+        void (async () => {
+          try {
+            setFetchingChannels(true);
+            const prepared = await api.prepareSlackOAuth(workspaceId, code);
+            accessTokenRef.current = prepared.accessToken;
+            workspaceInfoRef.current = {
+              slackWorkspaceId: prepared.slackWorkspaceId,
+              slackTeamName: prepared.slackTeamName,
+            };
+            setAvailableChannels(prepared.channels);
+          } catch (e: any) {
+            setErrorMsg(`Failed to load Slack channels: ${e.message}`);
+            setStep('error');
+          } finally {
+            setFetchingChannels(false);
+          }
+        })();
         popupRef.current?.close();
       } else if (event.data?.type === 'slack_oauth_error') {
         const { error } = event.data;
@@ -113,20 +130,6 @@ export const SlackConnector: React.FC<Props> = ({ workspaceId, onConnected, onEr
     }
   }, [workspaceId, onError]);
 
-  const loadChannels = useCallback(async (code: string, token: string) => {
-    try {
-      setFetchingChannels(true);
-      // Call backend to get channels using the token
-      const channels = await api.getSlackChannels(workspaceId, token);
-      setAvailableChannels(channels);
-      accessTokenRef.current = token;
-    } catch (e: any) {
-      setErrorMsg(`Failed to load channels: ${e.message}`);
-    } finally {
-      setFetchingChannels(false);
-    }
-  }, [workspaceId]);
-
   const toggleChannel = useCallback((channelId: string) => {
     setSelectedChannels((prev) => {
       const next = new Set(prev);
@@ -154,7 +157,7 @@ export const SlackConnector: React.FC<Props> = ({ workspaceId, onConnected, onEr
         setErrorMsg('');
 
         const result = await api.connectSlack(workspaceId, {
-          code: oauthCode,
+          accessToken: accessTokenRef.current,
           slackWorkspaceId: workspaceInfoRef.current.slackWorkspaceId,
           slackTeamName: workspaceInfoRef.current.slackTeamName,
           channels: Array.from(selectedChannels),

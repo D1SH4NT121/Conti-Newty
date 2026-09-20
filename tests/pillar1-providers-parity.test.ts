@@ -89,8 +89,8 @@ describe('Pillar 1.3: Real Provider Contract Parity & Simulation Guard', () => {
 
   it('4. ProviderFactory instantiates all available providers and lists metadata correctly', () => {
     const list = ProviderFactory.getAvailableProviders();
-    expect(list).toHaveLength(4);
-    expect(list.map((p) => p.id)).toEqual(['claude', 'gemini', 'openai', 'bedrock']);
+    expect(list).toHaveLength(5);
+    expect(list.map((p) => p.id)).toEqual(['claude', 'gemini', 'openai', 'openrouter', 'bedrock']);
 
     const claude = ProviderFactory.createProvider('claude');
     expect(claude.providerType).toBe('claude');

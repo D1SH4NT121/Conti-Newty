@@ -53,6 +53,9 @@ export const Settings: React.FC = () => {
   const [autoSyncLastRun, setAutoSyncLastRun] = useState<string | null>(null);
   const [autoSyncError, setAutoSyncError] = useState<string | null>(null);
 
+  const mcpEndpoint = mcpConfig?.endpointUrl || `${window.location.origin}/api/workspaces/${workspace?.id}/mcp`;
+  const mcpAuthorization = newMcpToken ? `Bearer ${newMcpToken}` : 'Bearer <MCP_TOKEN>';
+
   useEffect(() => {
     if (workspace) {
       setName(workspace.name || '');
@@ -602,6 +605,30 @@ export const Settings: React.FC = () => {
             </div>
           )}
 
+          {newMcpToken && (
+            <div className="p-3 bg-primary/10 border border-primary/30 rounded space-y-2">
+              <div className="font-mono text-[10px] text-primary uppercase tracking-wider">
+                Ready-to-paste MCP connection
+              </div>
+              <div className="font-mono text-[11px] text-foreground break-all select-all bg-background/70 p-2 rounded">
+                {`claude mcp add conti-newty ${mcpEndpoint} --header "Authorization: Bearer ${newMcpToken}"`}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    `claude mcp add conti-newty ${mcpEndpoint} --header "Authorization: Bearer ${newMcpToken}"`
+                  );
+                  setCopiedSnippet('mcp-ready');
+                  setTimeout(() => setCopiedSnippet(null), 2000);
+                }}
+                className="font-mono text-[10px] text-primary hover:underline"
+              >
+                {copiedSnippet === 'mcp-ready' ? 'COPIED' : 'COPY COMMAND'}
+              </button>
+            </div>
+          )}
+
           {/* Active Tokens List */}
           {mcpTokens.length > 0 && (
             <div className="space-y-2">
@@ -905,4 +932,3 @@ export const Settings: React.FC = () => {
   );
 };
 export default Settings;
-

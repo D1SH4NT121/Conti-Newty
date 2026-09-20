@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../modules/auth/auth-service';
 import { prisma } from '../db/client';
+import { randomUUID } from 'crypto';
 
 const authService = new AuthService();
 
@@ -18,6 +19,31 @@ export interface AuthenticatedRequest extends Request {
     role: string;
     workspaceId: string;
   };
+}
+
+async function getOrCreateAnonymousUser(req: Request) {
+  const anonymousIdHeader = req.headers['x-anonymous-id'];
+  const anonymousId = typeof anonymousIdHeader === 'string' && /^[a-zA-Z0-9_-]{8,80}$/.test(anonymousIdHeader)
+    ? anonymousIdHeader
+    : randomUUID();
+  const displayNameHeader = req.headers['x-display-name'];
+  const displayName = typeof displayNameHeader === 'string' && displayNameHeader.trim()
+    ? displayNameHeader.trim().slice(0, 80)
+    : 'Guest';
+  const email = `anonymous-${anonymousId}@local.invalid`;
+
+  let organization = await prisma.organization.findFirst({ where: { name: 'Public Hackathon' } });
+  if (!organization) {
+    organization = await prisma.organization.create({ data: { name: 'Public Hackathon' } });
+  }
+
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: { name: displayName, organizationId: organization.id, role: 'PUBLIC' },
+    create: { email, name: displayName, role: 'PUBLIC', organizationId: organization.id }
+  });
+  req.res?.setHeader('x-anonymous-id', anonymousId);
+  return user;
 }
 
 export async function authMiddleware(
@@ -71,9 +97,17 @@ export async function authMiddleware(
       }
     }
 
-    return res.status(401).json({
-      error: 'Unauthorized: Valid authentication token or credentials required'
-    });
+    const user = await getOrCreateAnonymousUser(req);
+    r.user = {
+      id: user.id,
+      email: user.email,
+      name: user.name || 'Guest',
+      avatarUrl: user.avatarUrl || null,
+      role: user.role || 'USER',
+      lastWorkspaceId: user.lastWorkspaceId,
+      organizationId: user.organizationId
+    };
+    return next();
   } catch (err: any) {
     return res.status(500).json({ error: 'Authentication internal error: ' + err.message });
   }
@@ -113,13 +147,11 @@ export function requireWorkspaceRole(minRole: 'viewer' | 'member' | 'admin' = 'v
         }
       });
 
-      if (!membership) {
-        return res.status(403).json({
-          error: 'Forbidden: You do not have access to this workspace'
-        });
-      }
+      const ensuredMembership = membership || await prisma.workspaceMember.create({
+        data: { workspaceId, userId: r.user!.id, role: 'member' }
+      });
 
-      const userWeight = roleWeights[membership.role.toLowerCase()] || 0;
+      const userWeight = roleWeights[ensuredMembership.role.toLowerCase()] || 0;
       const requiredWeight = roleWeights[minRole] || 1;
 
       if (userWeight < requiredWeight) {
@@ -129,7 +161,7 @@ export function requireWorkspaceRole(minRole: 'viewer' | 'member' | 'admin' = 'v
       }
 
       r.workspaceMember = {
-        role: membership.role,
+        role: ensuredMembership.role,
         workspaceId
       };
 
@@ -152,4 +184,21 @@ export function requireWorkspaceRole(minRole: 'viewer' | 'member' | 'admin' = 'v
       return res.status(500).json({ error: 'Authorization error: ' + err.message });
     }
   };
+}
+
+export function requireExplicitAuthentication(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const hasBearerToken = typeof req.headers.authorization === 'string'
+    && req.headers.authorization.startsWith('Bearer ');
+  const hasDirectUser = typeof req.headers['x-user-id'] === 'string'
+    && req.headers['x-user-id'].length > 0;
+
+  if (!hasBearerToken && !hasDirectUser) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  return next();
 }

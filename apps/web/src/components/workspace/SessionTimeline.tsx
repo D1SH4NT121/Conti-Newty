@@ -80,6 +80,10 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({ events, curren
         return { icon: CornerDownRight, color: 'text-primary', bg: 'bg-primary/10 border-primary/20', label: 'Human Steering Applied' };
       case 'AGENT_STEP_INTERRUPTED':
         return { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', label: 'Step Interrupted' };
+      case 'AGENT_STEP_STARTED':
+        return { icon: Play, color: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20', label: 'Agent Step Started' };
+      case 'AGENT_STEP_COMPLETED':
+        return { icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', label: 'Agent Step Completed' };
       case 'CORRECTION_CAPTURED':
         return { icon: Zap, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', label: 'Correction Captured' };
       case 'SKILL_PROPOSED':

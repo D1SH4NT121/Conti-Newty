@@ -176,4 +176,19 @@ export class WorkspaceStorage {
 
     return results;
   }
+
+  public async listFilesRecursive(relativeDirPath = ''): Promise<FileInfo[]> {
+    const entries = await this.listDirectory(relativeDirPath);
+    const files: FileInfo[] = [];
+
+    for (const entry of entries) {
+      if (entry.isDirectory) {
+        files.push(...(await this.listFilesRecursive(entry.path)));
+      } else {
+        files.push(entry);
+      }
+    }
+
+    return files;
+  }
 }

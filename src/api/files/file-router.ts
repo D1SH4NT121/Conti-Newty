@@ -19,7 +19,9 @@ export function createFileRouter(storageResolver?: (workspaceId: string) => Work
     try {
       const workspaceId = req.params.id || req.params.workspaceId;
       const storage = getStorage(workspaceId);
-      const files = await storage.listDirectory('');
+      const files = req.query.recursive === 'true'
+        ? await storage.listFilesRecursive('')
+        : await storage.listDirectory('');
       return res.status(200).json({ files });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -34,7 +36,9 @@ export function createFileRouter(storageResolver?: (workspaceId: string) => Work
       const relativePath = req.params[0] || '';
 
       if (!relativePath) {
-        const files = await storage.listDirectory('');
+        const files = req.query.recursive === 'true'
+          ? await storage.listFilesRecursive('')
+          : await storage.listDirectory('');
         return res.status(200).json({ files });
       }
 

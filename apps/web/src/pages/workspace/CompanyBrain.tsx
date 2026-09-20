@@ -7,6 +7,7 @@ import {
   SkillEntry,
   TribalMemoryEntry,
   TribalMemoryHistory,
+  TaskResponse,
 } from '../../lib/api-client';
 import {
   Sparkles,
@@ -166,6 +167,9 @@ function TreeDirItem({
 export const CompanyBrain: React.FC = () => {
   const { workspace } = useOutletContext<{ workspace: WorkspaceSummary }>();
   const [activeTab, setActiveTab] = useState<'documents' | 'skills' | 'tribal'>('documents');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'github' | 'slack' | 'jira' | 'drive'>('all');
+  const [sourceModalOpen, setSourceModalOpen] = useState(false);
+  const [sourceSearch, setSourceSearch] = useState('');
   const [files, setFiles] = useState<WorkspaceFileEntry[]>([]);
   const [skills, setSkills] = useState<SkillEntry[]>([]);
   const [tribalEntries, setTribalEntries] = useState<TribalMemoryEntry[]>([]);
@@ -186,10 +190,33 @@ export const CompanyBrain: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showNewFileModal, setShowNewFileModal] = useState(false);
   const [newFilePath, setNewFilePath] = useState('');
+  const [chatPrompt, setChatPrompt] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatResult, setChatResult] = useState<TaskResponse | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   const isDirty = fileContent !== initialContent;
   const lines = fileContent.split('\n');
   const searchLower = searchQuery.toLowerCase().trim();
+
+  const runBrainChat = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!workspace?.id || !chatPrompt.trim() || chatLoading) return;
+    setChatLoading(true);
+    setChatError(null);
+    try {
+      const result = await api.createTask(workspace.id, chatPrompt.trim(), undefined, [
+        { role: 'Researcher', provider: 'gemini' },
+        { role: 'Critic', provider: 'gemini' },
+        { role: 'Synthesizer', provider: 'gemini' },
+      ]);
+      setChatResult(result);
+    } catch (err: any) {
+      setChatError(err.message || 'The Company Brain could not answer');
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   const loadSkills = useCallback(async () => {
     if (!workspace?.id) return;
@@ -229,7 +256,7 @@ export const CompanyBrain: React.FC = () => {
     if (!workspace?.id) return;
     try {
       setLoading(true);
-      const data = await api.listFiles(workspace.id, '');
+      const data = await api.listFiles(workspace.id, '', true);
       setFiles(data);
       if (!selectedPath && data.length > 0) {
         const firstFile = data.find((f) => !f.isDirectory);
@@ -333,26 +360,151 @@ export const CompanyBrain: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isDirty, selectedPath, fileContent]);
 
-  const tree = buildTree(files);
+  const documentFiles = files.filter((f) => !f.isDirectory);
+  const getFileSource = (file: WorkspaceFileEntry): 'github' | 'slack' | 'jira' | 'drive' => {
+    const path = file.path.toLowerCase();
+    if (path.includes('slack')) return 'slack';
+    if (path.includes('jira')) return 'jira';
+    if (path.includes('github') || path.includes('source_manifest') || path.includes('company_brain/docs/')) return 'github';
+    return 'drive';
+  };
+  const sourceFiles = sourceFilter === 'all'
+    ? documentFiles
+    : documentFiles.filter((file) => getFileSource(file) === sourceFilter);
+  const filteredDocumentFiles = documentFiles;
+  const filteredTree = buildTree(filteredDocumentFiles);
+  const sourceTree = buildTree(sourceFiles);
+  const sourceSearchLower = sourceSearch.toLowerCase().trim();
+  const selectedSourceLabel = sourceFilter === 'all' ? 'Company Brain' : `${sourceFilter[0].toUpperCase()}${sourceFilter.slice(1)}`;
+  const memorySources = [
+    { key: 'github' as const, label: 'GitHub', color: 'text-sky-400', count: documentFiles.filter((f) => getFileSource(f) === 'github').length },
+    { key: 'slack' as const, label: 'Slack', color: 'text-pink-400', count: documentFiles.filter((f) => getFileSource(f) === 'slack').length },
+    { key: 'jira' as const, label: 'Jira', color: 'text-blue-400', count: documentFiles.filter((f) => getFileSource(f) === 'jira').length },
+    { key: 'drive' as const, label: 'Drive', color: 'text-emerald-400', count: documentFiles.filter((f) => getFileSource(f) === 'drive').length },
+    { label: 'Tribal', color: 'text-amber-400', count: tribalEntries.length },
+  ];
+  const memoryCategories = [
+    { label: 'Projects', hint: 'workstreams and launches' },
+    { label: 'Decisions', hint: 'why the team chose' },
+    { label: 'People', hint: 'owners and contributors' },
+    { label: 'Playbooks', hint: 'repeatable ways of working' },
+    { label: 'Risks', hint: 'open blockers and unknowns' },
+  ];
   const flatFiltered: WorkspaceFileEntry[] = searchLower
-    ? files.filter((f) => !f.isDirectory && (f.name.toLowerCase().includes(searchLower) || f.path.toLowerCase().includes(searchLower)))
+    ? filteredDocumentFiles.filter((f) => f.name.toLowerCase().includes(searchLower) || f.path.toLowerCase().includes(searchLower))
     : [];
 
   return (
     <div className="flex h-[calc(100vh-56px)] bg-background overflow-hidden">
+      {sourceModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6" onClick={() => setSourceModalOpen(false)}>
+          <div
+            className="w-full max-w-2xl max-h-[80vh] flex flex-col border border-border bg-background shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4 p-4 border-b border-border">
+              <div>
+                <div className="font-mono text-xs uppercase tracking-wider text-primary">{selectedSourceLabel} files</div>
+                <div className="font-mono text-[10px] text-muted-foreground">{sourceFiles.length} documents connected to this source</div>
+              </div>
+              <button
+                onClick={() => setSourceModalOpen(false)}
+                className="px-2 py-1 font-mono text-xs border border-border text-muted-foreground hover:text-foreground"
+              >
+                CLOSE
+              </button>
+            </div>
+            <div className="p-3 border-b border-border">
+              <input
+                autoFocus
+                value={sourceSearch}
+                onChange={(event) => setSourceSearch(event.target.value)}
+                placeholder={`Search ${selectedSourceLabel} files...`}
+                className="w-full px-3 py-2 bg-card border border-border text-foreground text-xs font-mono focus:outline-none focus:border-foreground"
+              />
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto py-2">
+              {sourceFiles.length === 0 ? (
+                <div className="p-8 text-center font-mono text-xs text-muted-foreground">
+                  No {selectedSourceLabel} files are connected yet.
+                </div>
+              ) : (
+                <TreeDirItem
+                  dir={sourceTree}
+                  depth={0}
+                  selected={selectedPath}
+                  onSelect={(path) => {
+                    setSourceModalOpen(false);
+                    setSourceSearch('');
+                    loadFileContent(path);
+                  }}
+                  searchLower={sourceSearchLower}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Sidebar */}
       <div className="w-80 border-r border-border bg-background overflow-y-auto shrink-0 flex flex-col">
+        <div className="p-4 border-b border-border bg-card/30 space-y-4">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary font-bold">MEMORY STORE</div>
+            <h2 className="font-serif text-xl text-foreground mt-1">Your company, remembered.</h2>
+            <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+              Signals from the tools your team already uses, connected by project, person, decision, and time.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {memorySources.map((source) => (
+              <button
+                key={source.label}
+                onClick={() => {
+                  if ('key' in source) {
+                    setSourceFilter(source.key);
+                    setSourceModalOpen(true);
+                  } else {
+                    setActiveTab('tribal');
+                    setSourceFilter('all');
+                    loadTribal();
+                  }
+                }}
+                className={`flex items-center justify-between px-2 py-1.5 border bg-background/70 transition-colors ${
+                  ('key' in source && sourceFilter === source.key) || (source.label === 'Tribal' && activeTab === 'tribal')
+                    ? 'border-foreground bg-card'
+                    : 'border-border hover:border-foreground/60'
+                }`}
+              >
+                <span className={`font-mono text-[10px] ${source.color}`}>{source.label}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">{source.count}</span>
+              </button>
+            ))}
+          </div>
+          <div className="space-y-1">
+            <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Navigate memory</div>
+            {memoryCategories.map((category) => (
+              <button
+                key={category.label}
+                onClick={() => { setActiveTab(category.label === 'Decisions' ? 'tribal' : 'documents'); setSearchQuery(category.label === 'Playbooks' ? 'sop' : ''); }}
+                className="w-full flex items-center justify-between text-left px-2 py-1.5 hover:bg-card transition-colors"
+              >
+                <span className="font-mono text-[10px] text-foreground">{category.label}</span>
+                <span className="font-mono text-[9px] text-muted-foreground">{category.hint}</span>
+              </button>
+            ))}
+          </div>
+        </div>
         {/* Surface Switcher */}
         <div className="flex border-b border-border text-xs font-mono shrink-0">
           <button
-            onClick={() => setActiveTab('documents')}
+            onClick={() => { setActiveTab('documents'); setSourceFilter('all'); }}
             className={`flex-1 py-2 text-center border-b-2 transition-colors ${
               activeTab === 'documents'
                 ? 'border-foreground text-foreground font-bold bg-card/40'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            DOCS ({files.filter((f) => !f.isDirectory).length})
+            DOCS ({filteredDocumentFiles.length})
           </button>
           <button
             onClick={() => {
@@ -388,11 +540,13 @@ export const CompanyBrain: React.FC = () => {
           <div className="flex items-center justify-between mb-2">
             <div>
               <div className="font-mono text-xs text-muted-foreground uppercase">
-                {activeTab === 'documents' ? 'COMPANY BRAIN' : activeTab === 'tribal' ? 'TRIBAL MEMORY' : 'LEARNED SKILLS'}
+                {activeTab === 'documents'
+                  ? 'COMPANY BRAIN'
+                  : activeTab === 'tribal' ? 'TRIBAL MEMORY' : 'LEARNED SKILLS'}
               </div>
               <div className="font-mono text-[10px] text-muted-foreground">
                 {activeTab === 'documents'
-                  ? `${files.filter((f) => !f.isDirectory).length} documents`
+                  ? `${filteredDocumentFiles.length} documents`
                   : activeTab === 'tribal'
                   ? `${tribalEntries.length} entries`
                   : `${skills.length} verified rules`}
@@ -451,13 +605,13 @@ export const CompanyBrain: React.FC = () => {
               )}
             </div>
           </div>
-          <input
+            <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={activeTab === 'documents' ? "Search docs..." : activeTab === 'tribal' ? "Search tribal memory..." : "Search skills..."}
             className="w-full px-2 py-1.5 bg-card border border-border text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder-muted-foreground"
-          />
+            />
         </div>
 
         <div className="flex-1 overflow-y-auto py-2">
@@ -611,10 +765,10 @@ export const CompanyBrain: React.FC = () => {
             </div>
           ) : (
             <div>
-              {tree.children.map((child) => (
+              {filteredTree.children.map((child) => (
                 <TreeDirItem key={child.fullPath} dir={child} depth={0} selected={selectedPath} onSelect={(p) => { setSelectedPath(p); loadFileContent(p); }} searchLower={searchLower} />
               ))}
-              {tree.files.map((f) => (
+              {filteredTree.files.map((f) => (
                 <button
                   key={f.path}
                   onClick={() => { setSelectedPath(f.path); loadFileContent(f.path); }}
@@ -853,6 +1007,48 @@ export const CompanyBrain: React.FC = () => {
           <div className="flex items-center justify-between px-4 py-2 border-t border-border bg-background font-mono text-xs text-muted-foreground">
             <span>Living Storage: <span className="text-foreground">data/workspaces/{workspace?.id}</span></span>
             <span>{selectedPath ? `${lines.length} lines · ${fileContent.length} chars` : 'Ready'}</span>
+          </div>
+
+          <div className="border-t border-primary/20 bg-background shrink-0">
+            <div className="flex items-center justify-between px-4 py-2">
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">CHAT WITH COMPANY MEMORY</div>
+                <div className="font-mono text-[9px] text-muted-foreground">Researcher → Critic → Synthesizer</div>
+              </div>
+              {chatLoading && <span className="font-mono text-[10px] text-amber-400 animate-pulse">REASONING...</span>}
+            </div>
+            {chatResult && (
+              <div className="mx-4 mb-2 max-h-32 overflow-y-auto rounded-lg border border-border bg-card px-3 py-2 text-xs leading-relaxed text-foreground">
+                <div className="mb-1 font-mono text-[9px] uppercase tracking-widest text-emerald-400">GROUNDED ANSWER</div>
+                <div className="whitespace-pre-wrap">{chatResult.answer}</div>
+                {chatResult.citations?.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {chatResult.citations.map((citation: any, index: number) => (
+                      <span key={`${citation.path || citation.source || index}-${index}`} className="rounded border border-primary/30 px-1.5 py-0.5 font-mono text-[9px] text-primary">
+                        {citation.path || citation.source || `Source ${index + 1}`}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {chatError && <div className="mx-4 mb-2 font-mono text-[10px] text-destructive">{chatError}</div>}
+            <form onSubmit={runBrainChat} className="flex items-end gap-2 px-4 pb-3">
+              <textarea
+                value={chatPrompt}
+                onChange={(e) => setChatPrompt(e.target.value)}
+                placeholder="Ask about this company..."
+                rows={2}
+                className="min-h-10 flex-1 resize-none rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
+              />
+              <button
+                type="submit"
+                disabled={chatLoading || !chatPrompt.trim()}
+                className="rounded-lg bg-foreground px-3 py-2 font-mono text-[10px] text-background hover:bg-primary hover:text-primary-foreground disabled:opacity-40"
+              >
+                ASK →
+              </button>
+            </form>
           </div>
         </div>
       )}

@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { Landing } from './pages/Landing';
 import { Auth } from './pages/Auth';
 import { AuthCallback } from './pages/AuthCallback';
+import { Demo } from './pages/Demo';
 import { EnterWorkspace } from './pages/EnterWorkspace';
 import { InviteRedirect } from './pages/InviteRedirect';
 import { Onboarding } from './pages/Onboarding';
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/demo" element={<Demo />} />
             <Route path="/invite/:token" element={<InviteRedirect />} />
             <Route path="/enter" element={<EnterWorkspace />} />
             <Route path="/onboarding" element={<Onboarding />} />

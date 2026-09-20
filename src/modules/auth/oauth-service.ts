@@ -66,7 +66,7 @@ async function findOrCreateOAuthUser(
 function redirectWithToken(
   res: any,
   user: { id: string; email: string; name: string | null },
-  params?: { inviteToken?: string; joinCode?: string; githubToken?: string; returnTo?: string }
+  params?: { inviteToken?: string; joinCode?: string; githubToken?: string; returnTo?: string; githubConnect?: boolean }
 ) {
   const token = issueToken(user.id, user.email);
   const url = new URL('/auth/callback', config.frontendUrl);
@@ -76,6 +76,9 @@ function redirectWithToken(
   }
   if (params?.returnTo) {
     url.searchParams.set('return_to', params.returnTo);
+  }
+  if (params?.githubConnect) {
+    url.searchParams.set('github_connect', '1');
   }
   if (params?.inviteToken) {
     url.searchParams.set('invite', params.inviteToken);

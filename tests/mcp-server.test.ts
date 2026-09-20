@@ -172,6 +172,59 @@ describe('Phase 1: Company Brain MCP Server', () => {
   });
 
   describe('3. Tool Execution & Dual-Write Audit Trail', () => {
+    it('exposes Company Brain files as MCP resources and reads them', async () => {
+      await storage.writeFile('company_brain/docs/handbook.md', '# Company Handbook');
+
+      const listed = await request(app)
+        .post(`/api/workspaces/${workspaceId}/mcp`)
+        .set('Authorization', `Bearer ${mcpToken}`)
+        .send({
+          jsonrpc: '2.0',
+          id: 9,
+          method: 'resources/list',
+        });
+
+      expect(listed.status).toBe(200);
+      expect(listed.body.result.resources).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            uri: 'workspace:///company_brain/docs/handbook.md',
+          }),
+        ])
+      );
+
+      const read = await request(app)
+        .post(`/api/workspaces/${workspaceId}/mcp`)
+        .set('Authorization', `Bearer ${mcpToken}`)
+        .send({
+          jsonrpc: '2.0',
+          id: 10,
+          method: 'resources/read',
+          params: { uri: 'workspace:///company_brain/docs/handbook.md' },
+        });
+
+      expect(read.status).toBe(200);
+      expect(read.body.result.contents[0].text).toBe('# Company Handbook');
+    });
+
+    it('rejects cross-workspace MCP tool overrides', async () => {
+      const res = await request(app)
+        .post(`/api/workspaces/${workspaceId}/mcp`)
+        .set('Authorization', `Bearer ${mcpToken}`)
+        .send({
+          jsonrpc: '2.0',
+          id: 8,
+          method: 'tools/call',
+          params: {
+            name: 'get_tribal_memory',
+            arguments: { workspace_id: 'another-workspace' },
+          },
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.error.code).toBe(-32003);
+    });
+
     it('executes get_tribal_memory with and without tag filtering', async () => {
       // Seed two tribal memory entries
       await createEntry({

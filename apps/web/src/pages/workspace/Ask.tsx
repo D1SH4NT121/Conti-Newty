@@ -19,7 +19,7 @@ const providerStyle = (provider: string) =>
   PROVIDERS.find(p => p.id === provider) || PROVIDERS[0];
 
 const DEFAULT_AGENTS: AgentConfig[] = [
-  { role: 'Researcher', provider: 'gemini' }
+  { role: 'Researcher', provider: 'claude' }
 ];
 
 export const Ask: React.FC = () => {
@@ -39,6 +39,7 @@ export const Ask: React.FC = () => {
   const [activeTurns, setActiveTurns] = useState<AgentTurn[]>([]);
   const [currentAgent, setCurrentAgent] = useState<{ role: string; provider: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const autoSubmittedQuery = useRef<string | null>(null);
 
   // Socket: join task room
   useEffect(() => {
@@ -122,6 +123,14 @@ export const Ask: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const query = searchParams.get('q')?.trim() || '';
+    if (!query || sharedTaskId || autoSubmittedQuery.current === query) return;
+
+    autoSubmittedQuery.current = query;
+    void handleAsk();
+  }, [sharedTaskId, searchParams]);
 
   const addAgent = () => {
     if (agents.length >= 4) return;

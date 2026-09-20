@@ -111,6 +111,8 @@ export const MultiplayerCursors: React.FC<MultiplayerCursorsProps> = ({
     socket.on('cursor.moved', handleCursorMoved);
     socket.on('cursor.removed', handleCursorRemoved);
     socket.on('presence.leave', handlePresenceLeave);
+    const handleSocketDisconnect = () => setRemotePeers(new Map());
+    socket.on('disconnect', handleSocketDisconnect);
 
     // Track local mouse moves and broadcast throttled to 35ms (~30fps)
     const handlePointerMove = (e: PointerEvent) => {
@@ -154,6 +156,7 @@ export const MultiplayerCursors: React.FC<MultiplayerCursorsProps> = ({
       socket.off('cursor.moved', handleCursorMoved);
       socket.off('cursor.removed', handleCursorRemoved);
       socket.off('presence.leave', handlePresenceLeave);
+      socket.off('disconnect', handleSocketDisconnect);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerleave', handlePointerLeave);
       clearInterval(cleanupInterval);

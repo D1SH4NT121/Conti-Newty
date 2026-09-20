@@ -1,4 +1,4 @@
-export type ProviderType = 'claude' | 'gemini' | 'openai' | 'bedrock';
+export type ProviderType = 'claude' | 'gemini' | 'openai' | 'openrouter' | 'bedrock';
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system';
@@ -48,6 +48,7 @@ export interface LLMProvider {
 export const CHEAP_MODEL: Record<ProviderType, string> = {
   claude: 'claude-haiku-4-5-20251001',
   openai: 'gpt-4o-mini',
+  openrouter: process.env.OPENROUTER_CHEAP_MODEL_ID || 'openai/gpt-4o-mini',
   gemini: process.env.GEMINI_CHEAP_MODEL_ID || 'gemini-3.5-flash-lite',
   bedrock: process.env.BEDROCK_CHEAP_MODEL_ID || 'amazon.nova-lite-v1:0'
 };
@@ -56,6 +57,7 @@ export const CHEAP_MODEL: Record<ProviderType, string> = {
 export const STRONG_MODEL: Record<ProviderType, string> = {
   claude: 'claude-3-5-sonnet-20241022',
   openai: 'gpt-4o',
+  openrouter: process.env.OPENROUTER_MODEL_ID || 'openai/gpt-4o',
   gemini: process.env.GEMINI_MODEL_ID || 'gemini-3-flash-preview',
   bedrock: process.env.BEDROCK_MODEL_ID || 'amazon.nova-pro-v1:0'
 };

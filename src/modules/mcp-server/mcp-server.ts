@@ -132,7 +132,7 @@ export class McpServer {
               },
               capabilities: {
                 tools: {},
-                resources: {},
+                resources: { subscribe: false, listChanged: false },
               },
             },
           };
@@ -160,15 +160,63 @@ export class McpServer {
           };
         }
 
+        case 'resources/list': {
+          const files = await context.storage.listFilesRecursive('');
+          return {
+            jsonrpc: '2.0',
+            id,
+            result: {
+              resources: files.map((file) => ({
+                uri: `workspace:///${file.path}`,
+                name: file.path,
+                description: `Company Brain file: ${file.path}`,
+                mimeType: 'text/plain',
+              })),
+            },
+          };
+        }
+
+        case 'resources/read': {
+          const uri = String(request.params?.uri || '');
+          const prefix = 'workspace:///';
+          if (!uri.startsWith(prefix)) {
+            return {
+              jsonrpc: '2.0',
+              id,
+              error: { code: -32602, message: 'Resource URI must use workspace:///' },
+            };
+          }
+
+          const filePath = uri.slice(prefix.length);
+          const content = await context.storage.readFile(filePath);
+          return {
+            jsonrpc: '2.0',
+            id,
+            result: {
+              contents: [{ uri, mimeType: 'text/plain', text: content }],
+            },
+          };
+        }
+
         case 'tools/call': {
           const params = request.params || {};
           const toolName = params.name;
           const args = params.arguments || {};
 
-          // Allow overriding target workspace if authorized or matching
+          if (args.workspace_id && args.workspace_id !== context.workspaceId) {
+            return {
+              jsonrpc: '2.0',
+              id,
+              error: {
+                code: -32003,
+                message: 'MCP token is limited to its authenticated workspace',
+              },
+            };
+          }
+
           const effectiveContext: McpToolContext = {
             ...context,
-            workspaceId: args.workspace_id || context.workspaceId,
+            workspaceId: context.workspaceId,
           };
 
           let toolResult;

@@ -68,6 +68,18 @@ describe('Storage Module & Workspace Security Sandbox', () => {
       expect(names).toContain('utils.ts');
     });
 
+    it('should list nested files recursively for the Brain file browser', async () => {
+      await storage.createFile('company_brain/docs/repo/README.md', '# README');
+      await storage.createFile('company_brain/docs/repo/docs/guide.md', '# Guide');
+
+      const list = await storage.listFilesRecursive('');
+      const paths = list.map((item) => item.path);
+
+      expect(paths).toContain('company_brain/docs/repo/README.md');
+      expect(paths).toContain('company_brain/docs/repo/docs/guide.md');
+      expect(list.every((item) => !item.isDirectory)).toBe(true);
+    });
+
     it('should delete a file', async () => {
       await storage.createFile('to-delete.txt', 'temp');
       expect(await storage.fileExists('to-delete.txt')).toBe(true);

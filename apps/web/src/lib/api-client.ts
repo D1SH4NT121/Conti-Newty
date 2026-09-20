@@ -202,10 +202,33 @@ export interface JoinCodeInfo {
 }
 
 class ApiClient {
+  private getAnonymousIdentity(): { id: string; displayName: string } {
+    const idKey = 'anti_anonymous_id';
+    const nameKey = 'anti_display_name';
+    let id = localStorage.getItem(idKey);
+    if (!id) {
+      id = (typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2))
+        .replace(/[^a-zA-Z0-9_-]/g, '')
+        .slice(0, 64);
+      localStorage.setItem(idKey, id);
+    }
+    return { id, displayName: localStorage.getItem(nameKey) || 'Guest' };
+  }
+
+  setDisplayName(displayName: string): void {
+    const value = displayName.trim().slice(0, 80);
+    if (value) localStorage.setItem('anti_display_name', value);
+  }
+
   private getHeaders(): HeadersInit {
     const token = localStorage.getItem('anti_token');
+    const identity = this.getAnonymousIdentity();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'x-anonymous-id': identity.id,
+      'x-display-name': identity.displayName,
     };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -357,6 +380,15 @@ class ApiClient {
     return res.json();
   }
 
+  async getWorkspace(workspaceId: string): Promise<WorkspaceSummary> {
+    const res = await fetch(`/api/workspaces/${workspaceId}`, { headers: this.getHeaders() });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to load workspace' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
   async getWorkspaceMembers(workspaceId: string): Promise<WorkspaceMemberItem[]> {
     const res = await fetch(`/api/workspaces/${workspaceId}/members`, {
       headers: this.getHeaders(),
@@ -381,9 +413,10 @@ class ApiClient {
     return res.json();
   }
 
-  async listFiles(workspaceId: string, subpath: string = ''): Promise<WorkspaceFileEntry[]> {
+  async listFiles(workspaceId: string, subpath: string = '', recursive = false): Promise<WorkspaceFileEntry[]> {
     const cleanPath = subpath.replace(/^\/+/, '');
-    const url = cleanPath ? `/api/workspaces/${workspaceId}/files/${cleanPath}` : `/api/workspaces/${workspaceId}/files`;
+    const baseUrl = cleanPath ? `/api/workspaces/${workspaceId}/files/${cleanPath}` : `/api/workspaces/${workspaceId}/files`;
+    const url = recursive ? `${baseUrl}?recursive=true` : baseUrl;
     const res = await fetch(url, {
       headers: this.getHeaders(),
     });
@@ -534,6 +567,14 @@ class ApiClient {
       return { repos: [], isAuthenticated: false };
     }
     return res.json();
+  }
+
+  async getGitHubConnectUrl(workspaceId?: string): Promise<string> {
+    const query = workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : '';
+    const res = await fetch(`/api/auth/github/connect${query}`, { headers: this.getHeaders() });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data.url;
   }
 
   async importGitHubRepo(workspaceId: string, params: { fullName?: string; repoUrl?: string; branch?: string; token?: string }): Promise<ImportResult> {
@@ -847,9 +888,27 @@ class ApiClient {
     return data.channels || [];
   }
 
+  async prepareSlackOAuth(workspaceId: string, code: string): Promise<{
+    accessToken: string;
+    slackWorkspaceId: string;
+    slackTeamName: string;
+    channels: Array<{ id: string; name: string; is_private: boolean; is_general: boolean; num_members?: number }>;
+  }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/slack/prepare`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ code }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to prepare Slack connection' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
   async connectSlack(
     workspaceId: string,
-    params: { code: string; slackWorkspaceId: string; slackTeamName: string; channels: string[]; archiveFormat?: string; targetPath?: string }
+    params: { code?: string; accessToken?: string; slackWorkspaceId: string; slackTeamName: string; channels: string[]; archiveFormat?: string; targetPath?: string }
   ): Promise<{ connectionId: string; messageCount: number; fileCount: number }> {
     const res = await fetch(`/api/workspaces/${workspaceId}/connectors/slack/connect`, {
       method: 'POST',
@@ -1059,6 +1118,34 @@ class ApiClient {
     return res.json();
   }
 
+  async listThreads(workspaceId: string): Promise<any[]> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/threads`, { headers: this.getHeaders() });
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  async createThread(workspaceId: string, title: string): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/threads`, {
+      method: 'POST', headers: this.getHeaders(), body: JSON.stringify({ title })
+    });
+    if (!res.ok) throw new Error('Failed to create discussion thread');
+    return res.json();
+  }
+
+  async listThreadMessages(workspaceId: string, threadId: string): Promise<any[]> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/threads/${threadId}/messages`, { headers: this.getHeaders() });
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  async postThreadMessage(workspaceId: string, threadId: string, content: string): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/threads/${threadId}/messages`, {
+      method: 'POST', headers: this.getHeaders(), body: JSON.stringify({ content })
+    });
+    if (!res.ok) throw new Error('Failed to post discussion message');
+    return res.json();
+  }
+
   async createSession(
     workspaceId: string,
     params: { title: string; goal: string; agents?: any[] }
@@ -1218,7 +1305,14 @@ class ApiClient {
   }
 
   async resumeSession(workspaceId: string, sessionId: string): Promise<void> {
-    await this.startSession(workspaceId, sessionId);
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions/${sessionId}/resume`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to resume session' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
   }
 
   async requestDriver(workspaceId: string, sessionId: string): Promise<void> {
@@ -1636,6 +1730,3 @@ export interface TribalMemoryHistory {
 }
 
 export const api = new ApiClient();
-
-
-

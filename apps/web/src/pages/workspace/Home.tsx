@@ -29,7 +29,7 @@ export const Home: React.FC = () => {
 
   useEffect(() => {
     if (!workspace?.id) return;
-    api.listFiles(workspace.id)
+    api.listFiles(workspace.id, '', true)
       .then(setFiles)
       .catch(console.error)
       .finally(() => setFilesLoading(false));

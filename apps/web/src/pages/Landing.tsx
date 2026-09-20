@@ -128,7 +128,7 @@ export const Landing: React.FC = () => {
   const navigate = useNavigate();
 
   const onEnterWorkspace = () => {
-    navigate('/enter');
+    navigate('/demo');
   };
 
   // Traversal Stepper State (Section 5: Mechanism)

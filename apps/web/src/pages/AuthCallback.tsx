@@ -15,6 +15,7 @@ export const AuthCallback: React.FC = () => {
     const inviteToken = params.get('invite');
     const joinCode = params.get('code');
     const githubToken = params.get('github_token');
+    const githubConnect = params.get('github_connect') === '1';
     const returnTo = params.get('return_to');
 
     if (githubToken) {
@@ -53,7 +54,10 @@ export const AuthCallback: React.FC = () => {
             console.error('OAuth join code redeem error:', e);
           }
         }
-        if (returnTo) {
+        // The GitHub repository picker uses /onboarding as a temporary return
+        // target so it can receive the token. Do not send an existing user
+        // back through workspace setup.
+        if (returnTo && (githubConnect || !(returnTo === '/onboarding' && res.nextRoute !== '/onboarding'))) {
           navigate(returnTo);
           return;
         }

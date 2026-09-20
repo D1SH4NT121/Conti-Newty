@@ -14,7 +14,6 @@ import { createChangeRouter } from './changes/change-router';
 import { createAppRouter } from './apps/app-router';
 import { createInviteRouter } from './invites/invite-router';
 import { createGithubRouter } from './github/github-router';
-import { createCredentialRouter } from './credentials/credential-router';
 import { createConnectorRouter } from './connectors/connector-router';
 import { createTribalRouter } from './tribal-memory/tribal-router';
 import { createIcmRouter } from './icm/icm-router';
@@ -22,6 +21,7 @@ import { createSessionRouter } from './sessions/session-router';
 import { createSkillRouter } from './skills/skill-router';
 import { createMcpRouter } from './mcp/mcp-router';
 import { createCandidateRouter } from './tribal-memory/candidate-router';
+import { createCredentialRouter } from './credentials/credential-router';
 
 import { config } from '../config';
 import { startScheduler } from '../modules/connectors/connector-scheduler';
@@ -99,7 +99,7 @@ export function createApp(
 
       res.header(
         'Access-Control-Allow-Headers',
-        'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-id'
+        'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-id, x-anonymous-id, x-display-name'
       );
 
       if (req.method === 'OPTIONS') {
@@ -170,6 +170,11 @@ export function createApp(
   );
 
   app.use(
+    '/api/credentials',
+    createCredentialRouter()
+  );
+
+  app.use(
     '/api/orgs',
     createOrgRouter()
   );
@@ -230,11 +235,6 @@ export function createApp(
       storageResolver,
       sandboxRunner
     )
-  );
-
-  app.use(
-    '/api/credentials',
-    createCredentialRouter()
   );
 
   app.use(

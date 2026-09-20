@@ -169,7 +169,18 @@ export class AgentRunner {
         const systemPrompt = agentCfg.systemPrompt ||
           `You are the ${agentCfg.role} agent. Always cite sources as [source: path/to/file:lineStart-lineEnd].`;
 
-        const aiResponse = await client.complete({ messages, systemPrompt, tools: this.brainTools.getToolDefinitions(), model: resolvedModel });
+        let aiResponse;
+        try {
+          aiResponse = await client.complete({ messages, systemPrompt, tools: this.brainTools.getToolDefinitions(), model: resolvedModel });
+        } catch (providerError: any) {
+          if (agentCfg.provider === 'openrouter') throw providerError;
+          const fallbackKey = await CredentialService.resolveApiKey('openrouter', userId, workspaceId);
+          if (!fallbackKey) throw providerError;
+          const fallbackClient = new AIClient('openrouter', fallbackKey);
+          const fallbackModel = isFinalStep ? STRONG_MODEL.openrouter : CHEAP_MODEL.openrouter;
+          aiResponse = await fallbackClient.complete({ messages, systemPrompt, tools: this.brainTools.getToolDefinitions(), model: fallbackModel });
+          agentCfg.provider = 'openrouter';
+        }
 
         const rawAnswer = aiResponse.content;
         const finalAnswer = sanitizeHallucinatedCitations(rawAnswer, sourceTracker);

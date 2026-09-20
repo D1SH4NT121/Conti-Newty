@@ -5,6 +5,7 @@ import { AgentRunner } from '../../modules/brain/agent-runner';
 import { BrainTools } from '../../modules/brain/brain-tools';
 import { WorkspaceStorage } from '../../modules/storage/workspace-storage';
 import { AuthorizationGuard } from '../../modules/auth/authorization-guard';
+import { CredentialService } from '../../modules/auth/credential-service';
 import { config } from '../../config';
 
 export function createTaskRouter(storageResolver?: (workspaceId: string) => WorkspaceStorage): Router {
@@ -58,8 +59,41 @@ export function createTaskRouter(storageResolver?: (workspaceId: string) => Work
         }
       });
 
-      const defaultAgents = [{ role: 'Researcher', provider: config.aiProvider }];
-      const taskAgents = agents && agents.length > 0 ? agents : defaultAgents;
+      const requestedAgents = agents && agents.length > 0
+        ? agents
+        : [{ role: 'Researcher', provider: config.aiProvider }];
+
+      // A stale UI provider selection must not make a task fail when another
+      // configured provider is available for this user or workspace.
+      const taskAgents = [];
+      for (const agent of requestedAgents) {
+        const requestedProvider = String(agent.provider || config.aiProvider).toLowerCase();
+        const available = await CredentialService.resolveAvailableProvider(requestedProvider, req.user!.id, workspaceId);
+        if (available) {
+          taskAgents.push({ ...agent, provider: available.provider });
+          continue;
+        }
+
+        const fallbackProvider = config.aiProvider.toLowerCase();
+
+        await prisma.agentTask.update({
+          where: { id: task.id },
+          data: { status: 'FAILED' }
+        });
+        await prisma.agentEvent.create({
+          data: {
+            agentTaskId: task.id,
+            type: 'TASK_FAILED',
+            payload: JSON.stringify({
+              taskId: task.id,
+              error: `No AI provider is configured for ${requestedProvider}.`
+            })
+          }
+        });
+        return res.status(400).json({
+          error: `No AI provider is configured. Add an API key for ${requestedProvider} or configure ${fallbackProvider} in Settings.`
+        });
+      }
 
       const io = req.app.get('io');
       if (io) {
@@ -84,6 +118,14 @@ export function createTaskRouter(storageResolver?: (workspaceId: string) => Work
       if (io) {
         io.to(`workspace:${workspaceId}`).emit('task.updated', {
           id: task.id, status: result.status, workspaceId
+        });
+      }
+
+      if (result.status === 'FAILED') {
+        return res.status(502).json({
+          error: result.answer.replace(/^Error:\s*/i, '') || 'AI task execution failed',
+          taskId: result.taskId,
+          status: result.status
         });
       }
 

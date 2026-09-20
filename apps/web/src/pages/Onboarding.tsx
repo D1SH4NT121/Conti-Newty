@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, ImportResult } from '../lib/api-client';
 import { GitRepoPickerModal } from '../components/onboarding/GitRepoPickerModal';
+import { useAuth } from '../context/AuthContext';
 
 const STEPS = [
   { n: 1, label: 'Create workspace' },
@@ -33,6 +34,7 @@ function Step1({ onNext, workspaceName, setWorkspaceName }: {
   workspaceName: string;
   setWorkspaceName: (v: string) => void;
 }) {
+  const [displayName, setDisplayName] = useState(() => localStorage.getItem('anti_display_name') || '');
   const [desc, setDesc] = useState('');
   const [useIcm, setUseIcm] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -45,6 +47,7 @@ function Step1({ onNext, workspaceName, setWorkspaceName }: {
     setLoading(true);
     setError('');
     try {
+      if (displayName.trim()) api.setDisplayName(displayName);
       const ws = await api.createWorkspace({
         name: workspaceName.trim(),
         description: desc.trim() || undefined,
@@ -66,6 +69,16 @@ function Step1({ onNext, workspaceName, setWorkspaceName }: {
       <p className="text-sm text-muted-foreground mb-8">Your workspace is the persistent environment for your team&apos;s knowledge, work, and agents.</p>
       {error && <div className="mb-4 p-3 bg-destructive/5 border border-destructive/20"><span className="font-mono text-xs text-destructive">{error}</span></div>}
       <div className="space-y-4">
+        <div>
+          <label className="font-mono text-xs text-muted-foreground block mb-1.5">DISPLAY NAME</label>
+          <input
+            type="text"
+            value={displayName}
+            onChange={e => setDisplayName(e.target.value)}
+            placeholder="How collaborators should see you"
+            className="w-full px-3 py-2.5 bg-background border border-border text-foreground text-sm focus:outline-none focus:border-foreground transition-colors placeholder-muted-foreground"
+          />
+        </div>
         <div>
           <label className="font-mono text-xs text-muted-foreground block mb-1.5">WORKSPACE NAME</label>
           <input
@@ -670,9 +683,26 @@ function Step4({ onComplete, workspaceName }: { onComplete: () => void; workspac
 
 export const Onboarding: React.FC = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const [searchParams] = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
+  const [step, setStep] = useState(searchParams.get('workspace_id') ? 2 : 1);
   const [workspaceName, setWorkspaceName] = useState('');
-  const [workspaceId, setWorkspaceId] = useState('');
+  const [workspaceId, setWorkspaceId] = useState(searchParams.get('workspace_id') || '');
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      navigate('/auth', { replace: true });
+      return;
+    }
+
+    api.getMe().then(({ nextRoute }) => {
+      if (searchParams.get('workspace_id')) return;
+      if (nextRoute && nextRoute !== '/onboarding') {
+        navigate(nextRoute, { replace: true });
+      }
+    }).catch(() => {});
+  }, [authLoading, user, navigate, searchParams]);
 
   function next() { setStep(s => Math.min(s + 1, 4)); }
 

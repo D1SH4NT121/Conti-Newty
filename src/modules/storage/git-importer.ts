@@ -1,5 +1,6 @@
 import { WorkspaceStorage } from './workspace-storage';
 import path from 'path';
+import { upsertIngestedItem } from '../connectors/connector-scheduler';
 
 export interface GitHubRepoItem {
   id: number;
@@ -250,6 +251,13 @@ export class GitImporter {
         if (content) {
           const targetPath = `company_brain/docs/${cleanRepoName}/${item.path}`;
           await storage.writeFile(targetPath, content);
+          await upsertIngestedItem({
+            workspaceId: storage.workspaceId,
+            connector: 'github',
+            externalId: `${fullName}:${item.path}`,
+            brainPath: targetPath,
+            content,
+          });
           importedFiles.push(targetPath);
         }
       } catch (err) {
@@ -275,7 +283,14 @@ ${importedFiles.map((f) => `- \`${f}\``).join('\n')}
 *Synchronized deterministically via Conti-Newty Sovereign Git Kernel.*
 `;
     await storage.writeFile(manifestPath, manifestContent);
-    importedFiles.push(manifestPath);
+await upsertIngestedItem({
+  workspaceId: storage.workspaceId,
+  connector: 'github',
+  externalId: `${fullName}:SOURCE_MANIFEST.md`,
+  brainPath: manifestPath,
+  content: manifestContent,
+});
+importedFiles.push(manifestPath);
 
     return {
       success: true,

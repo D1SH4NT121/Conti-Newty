@@ -210,7 +210,11 @@ export const WorkspaceShell: React.FC = () => {
             setCurrentWorkspace(matched);
           } else {
             api.getWorkspace(workspaceId).then(setCurrentWorkspace).catch(() => {
-              if (list.length > 0) navigate(`/w/${list[0].id}/home`);
+              if (list.length > 0) {
+                navigate(`/w/${list[0].id}/home`, { replace: true });
+              } else {
+                navigate('/demo', { replace: true });
+              }
             });
           }
         }

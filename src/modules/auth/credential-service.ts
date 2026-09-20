@@ -13,7 +13,9 @@ export class CredentialService {
       if (userCred) {
         try {
           return CredentialVault.decrypt(userCred.secretEnc);
-        } catch {}
+        } catch {
+          // Ignore decryption error and fall back
+        }
       }
     }
 
@@ -26,7 +28,9 @@ export class CredentialService {
       if (wsCred) {
         try {
           return CredentialVault.decrypt(wsCred.secretEnc);
-        } catch {}
+        } catch {
+          // Ignore decryption error and fall back
+        }
       }
     }
 

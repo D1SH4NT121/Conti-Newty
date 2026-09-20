@@ -45,10 +45,10 @@ export class AppGeneratorService {
   public async generateAppFromKnowledge(
     params: GenerateAppParams
   ): Promise<GeneratedAppResult> {
-    const { workspaceId, userId, prompt, appType = 'dashboard', appName } = params;
+    const { workspaceId, userId: _userId, prompt, appType = 'dashboard', appName } = params;
 
     // 1. Gather domain context from workspace files
-    let workspaceKnowledgeData: any = {};
+    const workspaceKnowledgeData: any = {};
     try {
       const files = await this.storage.listDirectory();
       for (const file of files) {

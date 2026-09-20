@@ -192,7 +192,9 @@ export function createAuthRouter(): Router {
           const parsed = JSON.parse(Buffer.from(state, 'base64url').toString('utf-8'));
           inviteToken = parsed.invite;
           joinCode = parsed.code;
-        } catch {}
+        } catch {
+          // Ignore invalid base64 state payload
+        }
       }
 
       const profile = await oauthService.handleGoogleCallback(code);
@@ -235,7 +237,9 @@ export function createAuthRouter(): Router {
           inviteToken = parsed.invite;
           joinCode = parsed.code;
           returnTo = parsed.return_to;
-        } catch {}
+        } catch {
+          // Ignore invalid base64 state payload
+        }
       }
 
       const profile = await oauthService.handleGithubCallback(code);

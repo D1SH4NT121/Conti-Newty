@@ -83,7 +83,7 @@ AWS_REGION=us-east-1
 ARCHIVE_BUCKET=your-private-archive-bucket
 ```
 
-For local credentials, also set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. The Bedrock model defaults to `anthropic.claude-3-haiku-20240307-v1:0`; enable that model in the selected AWS region. Workspace archive export uploads ZIPs to the private S3 bucket and returns a 15-minute presigned download URL.
+For local credentials, also set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. The Bedrock model defaults to `anthropic.claude-haiku-4-5-20251001-v1:0`; enable that model in the selected AWS region. Workspace archive export uploads ZIPs to the private S3 bucket and returns a 15-minute presigned download URL.
 
 Run the demo container with:
 

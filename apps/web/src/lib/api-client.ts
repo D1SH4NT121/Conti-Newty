@@ -51,7 +51,7 @@ export interface VerifiedCitation {
 
 export interface AgentConfig {
   role: string;
-  provider: 'claude' | 'openai' | 'gemini';
+  provider: 'claude' | 'openai' | 'gemini' | 'bedrock';
   systemPrompt?: string;
   /** Explicit model override for this relay step (e.g. "gpt-4o-mini"). If omitted, cost routing applies automatically. */
   model?: string;
@@ -138,6 +138,58 @@ export interface ImportResult {
   count: number;
   files: string[];
   message: string;
+}
+
+export interface SessionEvent {
+  id?: string;
+  type: string;
+  actorId?: string | null;
+  payload?: any;
+  createdAt?: string | Date;
+}
+
+export interface SessionParticipant {
+  id: string;
+  userId: string;
+  role: string;
+  joinedAt?: string;
+  user?: {
+    id: string;
+    email: string;
+    name?: string | null;
+    avatarUrl?: string | null;
+  };
+}
+
+export interface SessionDetail {
+  id: string;
+  workspaceId: string;
+  title: string;
+  goal: string;
+  status: string;
+  driverId?: string | null;
+  currentDriverId?: string | null;
+  activeDriverRequestId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  participants: SessionParticipant[];
+  events: SessionEvent[];
+  appliedSkills?: any[];
+}
+
+export interface SkillEntry {
+  id: string;
+  workspaceId: string;
+  stableId: string;
+  status: 'TENTATIVE' | 'CONFIRMED' | 'REJECTED' | 'SUPERSEDED' | string;
+  rule: string;
+  rationale: string;
+  triggerPattern: string;
+  exampleSnippet?: string | null;
+  confidence: number;
+  originSessionId?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface JoinCodeInfo {
@@ -707,6 +759,142 @@ class ApiClient {
     return res.json();
   }
 
+  // ── Jira (OAuth + persistent connections) ──────────────────────────────
+
+  async getJiraAuthUrl(workspaceId: string): Promise<{ url: string }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/jira/auth-url`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to get Jira auth URL' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async connectJira(
+    workspaceId: string,
+    params: { code: string; baseUrl: string; email: string; jql?: string; targetPath?: string }
+  ): Promise<{ connectionId: string; issueCount: number; fileCount: number }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/jira/connect`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Jira connect failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async syncJiraConnections(workspaceId: string, params?: { connectionId?: string }): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/jira/sync`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(params || {}),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Jira sync failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async listJiraConnections(workspaceId: string): Promise<any[]> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/jira/connections`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  async disconnectJiraConnection(workspaceId: string, connectionId: string): Promise<void> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/jira/connections/${connectionId}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Jira disconnect failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+  }
+
+  // ── Slack (OAuth + persistent connections) ──────────────────────────────
+
+  async getSlackAuthUrl(workspaceId: string): Promise<{ url: string }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/slack/auth-url`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to get Slack auth URL' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async getSlackChannels(workspaceId: string, accessToken: string): Promise<Array<{ id: string; name: string; is_private: boolean; is_general: boolean; num_members?: number }>> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/slack/channels`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ accessToken }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to fetch Slack channels' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return data.channels || [];
+  }
+
+  async connectSlack(
+    workspaceId: string,
+    params: { code: string; slackWorkspaceId: string; slackTeamName: string; channels: string[]; archiveFormat?: string; targetPath?: string }
+  ): Promise<{ connectionId: string; messageCount: number; fileCount: number }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/slack/connect`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Slack connect failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async syncSlackConnections(workspaceId: string, params?: { connectionId?: string }): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/slack/sync`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(params || {}),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Slack sync failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async listSlackConnections(workspaceId: string): Promise<any[]> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/slack/connections`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  async disconnectSlackConnection(workspaceId: string, connectionId: string): Promise<void> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/slack/connections/${connectionId}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Slack disconnect failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+  }
+
   // ── Legacy Jira / Slack / Tribal (unchanged) ─────────────────────────────
 
   async syncTribalMemory(workspaceId: string, entries: Array<{ title: string; content: string; author?: string; tags?: string[] }>): Promise<any> {
@@ -771,7 +959,683 @@ class ApiClient {
   logout() {
     localStorage.removeItem('anti_token');
   }
+
+  // ========== Tribal Memory ==========
+
+  async createTribalMemoryEntry(
+    workspaceId: string,
+    params: { title: string; content: string; tags?: string[] }
+  ): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/tribal/entries`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to create entry' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async listTribalMemoryEntries(workspaceId: string, params?: { limit?: number; offset?: number; orderBy?: string }): Promise<any> {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', params.limit.toString());
+    if (params?.offset) query.set('offset', params.offset.toString());
+    if (params?.orderBy) query.set('orderBy', params.orderBy);
+    const queryStr = query.toString() ? `?${query.toString()}` : '';
+    const res = await fetch(`/api/workspaces/${workspaceId}/tribal/entries${queryStr}`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) return { entries: [], total: 0 };
+    return res.json();
+  }
+
+  async searchTribalMemoryEntries(workspaceId: string, params: { query: string; tags?: string[]; limit?: number; offset?: number }): Promise<any> {
+    const query = new URLSearchParams();
+    query.set('q', params.query);
+    if (params.tags?.length) query.set('tags', params.tags.join(','));
+    if (params.limit) query.set('limit', params.limit.toString());
+    if (params.offset) query.set('offset', params.offset.toString());
+    const res = await fetch(`/api/workspaces/${workspaceId}/tribal/entries/search?${query.toString()}`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) return { entries: [], total: 0 };
+    return res.json();
+  }
+
+  async getTribalMemoryEntry(workspaceId: string, entryId: string): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/tribal/entries/${entryId}`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) throw new Error(`Failed to fetch entry`);
+    return res.json();
+  }
+
+  async updateTribalMemoryEntry(workspaceId: string, entryId: string, params: { title?: string; content?: string; tags?: string[] }): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/tribal/entries/${entryId}`, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to update entry' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async deleteTribalMemoryEntry(workspaceId: string, entryId: string): Promise<void> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/tribal/entries/${entryId}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to delete entry' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+  }
+
+  async exportTribalMemoryToBrain(workspaceId: string, targetPath?: string): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/tribal/export`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(targetPath ? { targetPath } : {}),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Export failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  // ========== Live Sessions & Multiplayer AI ==========
+
+  async listSessions(workspaceId: string): Promise<any[]> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  async createSession(
+    workspaceId: string,
+    params: { title: string; goal: string; agents?: any[] }
+  ): Promise<{ sessionId: string; status: string; currentDriverId: string | null }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to create session' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async getSession(workspaceId: string, sessionId: string): Promise<SessionDetail> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions/${sessionId}`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to fetch session' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const raw = data.session || data;
+    return {
+      id: raw.id || sessionId,
+      workspaceId: raw.workspaceId || workspaceId,
+      title: raw.title || '',
+      goal: raw.goal || '',
+      status: raw.status || 'CREATED',
+      driverId: raw.currentDriverId || raw.driverId || null,
+      currentDriverId: raw.currentDriverId || raw.driverId || null,
+      activeDriverRequestId: raw.activeDriverRequestId || null,
+      createdAt: raw.createdAt || new Date().toISOString(),
+      updatedAt: raw.updatedAt || new Date().toISOString(),
+      participants: data.participants || raw.participants || [],
+      events: data.events || raw.events || [],
+      appliedSkills: data.appliedSkills || [],
+    };
+  }
+
+  async joinSession(workspaceId: string, sessionId: string): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions/${sessionId}/join`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to join session' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async startSession(workspaceId: string, sessionId: string): Promise<{ sessionId: string; status: string }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions/${sessionId}/start`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to start session' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async redirectSession(
+    workspaceId: string,
+    sessionId: string,
+    params: { instruction: string; evidence?: string; force?: boolean }
+  ): Promise<{ success: boolean; redirectId: string }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions/${sessionId}/redirect`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to redirect session' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async requestSessionDriver(workspaceId: string, sessionId: string): Promise<void> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions/${sessionId}/request-driver`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to request driver' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+  }
+
+  async approveSessionDriver(workspaceId: string, sessionId: string, driverId: string): Promise<void> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions/${sessionId}/approve-driver`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ driverId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to approve driver' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+  }
+
+  async handoffSessionDriver(workspaceId: string, sessionId: string, nextDriverId: string): Promise<void> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions/${sessionId}/handoff`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ nextDriverId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to hand off driver' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+  }
+
+  async pauseSession(workspaceId: string, sessionId: string): Promise<void> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions/${sessionId}/pause`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to pause session' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+  }
+
+  async cancelSession(workspaceId: string, sessionId: string): Promise<void> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions/${sessionId}/cancel`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to cancel session' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+  }
+
+  async distillSessionRedirect(
+    workspaceId: string,
+    sessionId: string,
+    params?: { redirectId?: string; reviewerContext?: string }
+  ): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions/${sessionId}/skills/distill`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(params || {}),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to distill redirect' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async resumeSession(workspaceId: string, sessionId: string): Promise<void> {
+    await this.startSession(workspaceId, sessionId);
+  }
+
+  async requestDriver(workspaceId: string, sessionId: string): Promise<void> {
+    await this.requestSessionDriver(workspaceId, sessionId);
+  }
+
+  async approveDriver(workspaceId: string, sessionId: string, driverId: string): Promise<void> {
+    await this.approveSessionDriver(workspaceId, sessionId, driverId);
+  }
+
+  async handoffDriver(workspaceId: string, sessionId: string, nextDriverId: string): Promise<void> {
+    await this.handoffSessionDriver(workspaceId, sessionId, nextDriverId);
+  }
+
+  async submitRedirect(
+    workspaceId: string,
+    sessionId: string,
+    params: { instruction: string; reason?: string; forceInterrupt?: boolean }
+  ): Promise<{ success: boolean; redirectId: string }> {
+    return this.redirectSession(workspaceId, sessionId, {
+      instruction: params.instruction,
+      evidence: params.reason,
+      force: params.forceInterrupt
+    });
+  }
+
+  async distillSession(workspaceId: string, sessionId: string): Promise<any[]> {
+    return this.distillSessionRedirect(workspaceId, sessionId);
+  }
+
+  async getSessionReplay(workspaceId: string, sessionId: string): Promise<{ sessionId: string; events: any[] }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/sessions/${sessionId}/replay`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to load replay' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  // ========== Skills Lifecycle ==========
+
+  async listSkills(workspaceId: string, status?: string): Promise<any[]> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    const res = await fetch(`/api/workspaces/${workspaceId}/skills${query}`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  async getSkill(workspaceId: string, skillId: string): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/skills/${skillId}`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) throw new Error('Skill not found');
+    return res.json();
+  }
+
+  async createSkill(workspaceId: string, data: any): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/skills`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to create skill' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async updateSkill(workspaceId: string, skillId: string, data: any): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/skills/${skillId}`, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to update skill' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async confirmSkill(workspaceId: string, skillId: string): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/skills/${skillId}/confirm`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to confirm skill' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async rejectSkill(workspaceId: string, skillId: string): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/skills/${skillId}/reject`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to reject skill' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async supersedeSkill(workspaceId: string, skillId: string, data: any): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/skills/${skillId}/supersede`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to supersede skill' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async getMcpConfig(workspaceId: string): Promise<{
+    workspaceId: string;
+    endpointUrl: string;
+    claudeCodeCommand: string;
+    cursorConfig: any;
+  }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/mcp/config`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to fetch MCP config' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async listMcpTokens(workspaceId: string): Promise<Array<{
+    id: string;
+    label: string;
+    status: string;
+    createdAt: string;
+  }>> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/mcp/tokens`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to list MCP tokens' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async createMcpToken(workspaceId: string, label?: string): Promise<{
+    id: string;
+    token: string;
+    label: string;
+    createdAt: string;
+  }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/mcp/token`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ label }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to generate MCP token' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async revokeMcpToken(workspaceId: string, tokenId: string): Promise<any> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/mcp/tokens/${tokenId}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to revoke MCP token' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  // ── Phase 2: Auto-sync connector opt-in ─────────────────────────────────────
+
+  async getAutoSyncStatus(workspaceId: string): Promise<{
+    enabled: boolean;
+    intervalMin: number;
+    enabledBy: string | null;
+    updatedAt: string;
+  }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/auto-sync`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to get auto-sync status' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async setAutoSync(
+    workspaceId: string,
+    enabled: boolean,
+    intervalMin?: number
+  ): Promise<{ enabled: boolean; intervalMin: number; enabledBy: string | null; updatedAt: string }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/auto-sync`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ enabled, intervalMin }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to set auto-sync' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async getAutoSyncHistory(
+    workspaceId: string,
+    limit = 20
+  ): Promise<Array<{ id: string; status: string; fileCount: number; detail: string | null; createdAt: string }>> {
+    const res = await fetch(
+      `/api/workspaces/${workspaceId}/connectors/auto-sync/history?limit=${limit}`,
+      { headers: this.getHeaders() }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to get sync history' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async runAutoSync(workspaceId: string): Promise<{
+    workspaceId: string;
+    drive: { updated: number; skipped: number; failed: number } | null;
+    jira: { totalUpdated: number; connectionsSynced: number; connectionsFailed: number } | null;
+    slack: { totalUpdated: number; connectionsSynced: number; connectionsFailed: number } | null;
+    errors: string[];
+    durationMs: number;
+  }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/connectors/auto-sync/run`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to run sync' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  // ── Phase 3: Knowledge Candidates & Synthesis ───────────────────────────────
+
+  async listKnowledgeCandidates(
+    workspaceId: string,
+    status: 'TENTATIVE' | 'CONFIRMED' | 'REJECTED' | 'SUPERSEDED' | 'ALL' = 'TENTATIVE'
+  ): Promise<{ candidates: KnowledgeCandidate[]; total: number }> {
+    const res = await fetch(
+      `/api/workspaces/${workspaceId}/knowledge-candidates?status=${status}`,
+      { headers: this.getHeaders() }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to list candidates' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async distillKnowledge(
+    workspaceId: string,
+    options?: { sourceItemIds?: string[]; limit?: number }
+  ): Promise<{
+    workspaceId: string;
+    itemsProcessed: number;
+    candidatesCreated: number;
+    candidatesMerged: number;
+    candidates: Array<{ id: string; title: string; status: string; suggestedAction: string; dedupHash: string | null }>;
+  }> {
+    const res = await fetch(`/api/workspaces/${workspaceId}/knowledge-candidates/distill`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(options || {}),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to distill knowledge' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async confirmKnowledgeCandidate(
+    workspaceId: string,
+    candidateId: string
+  ): Promise<{ candidate: KnowledgeCandidate; entry: TribalMemoryEntry }> {
+    const res = await fetch(
+      `/api/workspaces/${workspaceId}/knowledge-candidates/${candidateId}/confirm`,
+      {
+        method: 'POST',
+        headers: this.getHeaders(),
+      }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to confirm candidate' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async rejectKnowledgeCandidate(
+    workspaceId: string,
+    candidateId: string,
+    reason?: string
+  ): Promise<KnowledgeCandidate> {
+    const res = await fetch(
+      `/api/workspaces/${workspaceId}/knowledge-candidates/${candidateId}/reject`,
+      {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ reason }),
+      }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to reject candidate' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  // ── Phase 4: Tribal Memory & Staleness Tracking ─────────────────────────────
+
+  async listTribalEntries(
+    workspaceId: string,
+    params?: { limit?: number; offset?: number; includeSuperseded?: boolean; status?: string }
+  ): Promise<{ entries: TribalMemoryEntry[]; total: number }> {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+    if (params?.includeSuperseded) query.set('includeSuperseded', 'true');
+    if (params?.status) query.set('status', params.status);
+
+    const res = await fetch(
+      `/api/workspaces/${workspaceId}/tribal/entries?${query.toString()}`,
+      { headers: this.getHeaders() }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to list tribal memory' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async getTribalMemoryHistory(
+    workspaceId: string,
+    entryId: string
+  ): Promise<TribalMemoryHistory> {
+    const res = await fetch(
+      `/api/workspaces/${workspaceId}/tribal/entries/${entryId}/history`,
+      { headers: this.getHeaders() }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to fetch entry history' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+}
+
+export interface KnowledgeCandidate {
+  id: string;
+  workspaceId: string;
+  title: string;
+  summary: string;
+  content: string;
+  category: string | null;
+  tags: string[];
+  sourceItemIds: string[];
+  sourceConnector: string | null;
+  confidence: number;
+  status: 'TENTATIVE' | 'CONFIRMED' | 'REJECTED' | 'SUPERSEDED';
+  suggestedAction: 'CREATE' | 'UPDATE' | 'SUPERSEDE';
+  targetEntryId: string | null;
+  targetEntryTitle?: string;
+  dedupHash: string | null;
+  reviewedById: string | null;
+  reviewedByName?: string;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  promotedEntryId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TribalMemoryEntry {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+  authorId: string;
+  authorName?: string;
+  status: 'ACTIVE' | 'SUPERSEDED' | 'ARCHIVED';
+  supersedesId: string | null;
+  source: 'manual' | 'auto_distilled';
+  sourceCandidateId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TribalMemoryHistory {
+  current: TribalMemoryEntry;
+  ancestors: TribalMemoryEntry[];
+  descendants: TribalMemoryEntry[];
 }
 
 export const api = new ApiClient();
+
+
 

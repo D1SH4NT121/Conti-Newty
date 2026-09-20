@@ -1,10 +1,20 @@
 import http from 'http';
 import { Server, Socket } from 'socket.io';
-import { config } from '../config';
 import { PresenceManager } from './presence-manager';
 import { EventBroadcaster } from './event-broadcaster';
 import { StreamBufferManager } from './stream-buffer-manager';
 import { AuthService } from '../modules/auth/auth-service';
+import { prisma } from '../db/client';
+import {
+  joinSession,
+  getSession,
+  requestDriver,
+  approveDriverRequest,
+  handoffDriver,
+  pauseForDisconnect,
+  assertCanRedirect
+} from '../modules/sessions/session-service';
+import { SessionRunner } from '../modules/sessions/session-runner';
 
 export function createSocketServer(httpServer: http.Server) {
   const io = new Server(httpServer, {
@@ -154,11 +164,147 @@ export function createSocketServer(httpServer: http.Server) {
       EventBroadcaster.broadcastPresenceChanged(io, workspaceId, presences);
     });
 
-    socket.on('disconnect', () => {
+    socket.on('session.join', async (data: { workspaceId: string; sessionId: string }) => {
+      try {
+        const { workspaceId, sessionId } = data;
+        const userId = socket.data?.user?.id;
+        if (!userId) {
+          socket.emit('session.error', { message: 'Authentication required to join session' });
+          return;
+        }
+
+        await joinSession(workspaceId, sessionId, userId);
+        const room = `session:${sessionId}`;
+        socket.join(room);
+
+        const sessionDto = await getSession(workspaceId, sessionId, userId);
+        socket.emit('session.snapshot', {
+          session: sessionDto,
+          participants: sessionDto.participants,
+          currentDriverId: sessionDto.currentDriverId,
+          status: sessionDto.status,
+          events: sessionDto.events
+        });
+
+        io.to(room).emit('session.participant_changed', {
+          sessionId,
+          participants: sessionDto.participants
+        });
+      } catch (err: any) {
+        socket.emit('session.error', { message: err.message });
+      }
+    });
+
+    socket.on('session.leave', (data: { sessionId: string }) => {
+      if (data?.sessionId) {
+        socket.leave(`session:${data.sessionId}`);
+      }
+    });
+
+    socket.on('session.request_driver', async (data: { workspaceId: string; sessionId: string }) => {
+      try {
+        const { workspaceId, sessionId } = data;
+        const userId = socket.data?.user?.id;
+        if (!userId) return;
+
+        await requestDriver(workspaceId, sessionId, userId);
+        const sessionDto = await getSession(workspaceId, sessionId, userId);
+        io.to(`session:${sessionId}`).emit('session.event', sessionDto.events[sessionDto.events.length - 1]);
+      } catch (err: any) {
+        socket.emit('session.error', { message: err.message });
+      }
+    });
+
+    socket.on('session.approve_driver', async (data: { workspaceId: string; sessionId: string; driverId: string }) => {
+      try {
+        const { workspaceId, sessionId, driverId } = data;
+        const userId = socket.data?.user?.id;
+        if (!userId) return;
+
+        await approveDriverRequest(workspaceId, sessionId, driverId, userId);
+        const sessionDto = await getSession(workspaceId, sessionId, userId);
+        io.to(`session:${sessionId}`).emit('session.driver_changed', {
+          sessionId,
+          currentDriverId: sessionDto.currentDriverId,
+          participants: sessionDto.participants
+        });
+        io.to(`session:${sessionId}`).emit('session.event', sessionDto.events[sessionDto.events.length - 1]);
+      } catch (err: any) {
+        socket.emit('session.error', { message: err.message });
+      }
+    });
+
+    socket.on('session.handoff', async (data: { workspaceId: string; sessionId: string; nextDriverId: string }) => {
+      try {
+        const { workspaceId, sessionId, nextDriverId } = data;
+        const userId = socket.data?.user?.id;
+        if (!userId) return;
+
+        await handoffDriver(workspaceId, sessionId, userId, nextDriverId);
+        const sessionDto = await getSession(workspaceId, sessionId, userId);
+        io.to(`session:${sessionId}`).emit('session.driver_changed', {
+          sessionId,
+          currentDriverId: sessionDto.currentDriverId,
+          participants: sessionDto.participants
+        });
+        io.to(`session:${sessionId}`).emit('session.event', sessionDto.events[sessionDto.events.length - 1]);
+      } catch (err: any) {
+        socket.emit('session.error', { message: err.message });
+      }
+    });
+
+    socket.on('session.redirect', async (data: { workspaceId: string; sessionId: string; instruction: string; evidence?: string; force?: boolean }) => {
+      try {
+        const { workspaceId, sessionId, instruction, evidence, force } = data;
+        const userId = socket.data?.user?.id;
+        if (!userId) return;
+
+        const sessionDto = await getSession(workspaceId, sessionId, userId);
+        assertCanRedirect(sessionDto, userId, Boolean(force));
+
+        const { redirectId } = await SessionRunner.submitRedirect(sessionId, {
+          userId,
+          instruction,
+          evidence,
+          force: Boolean(force)
+        });
+
+        const updated = await getSession(workspaceId, sessionId, userId);
+        io.to(`session:${sessionId}`).emit('session.event', updated.events[updated.events.length - 1]);
+        socket.emit('session.redirect_accepted', { redirectId });
+      } catch (err: any) {
+        socket.emit('session.error', { message: err.message });
+      }
+    });
+
+    socket.on('disconnect', async () => {
       const affected = presenceManager.handleDisconnect(socket.id);
       for (const item of affected) {
         socket.to(`workspace:${item.workspaceId}`).emit('cursor.removed', { socketId: socket.id });
         EventBroadcaster.broadcastPresenceChanged(io, item.workspaceId, item.presences);
+      }
+
+      const userId = socket.data?.user?.id;
+      if (userId) {
+        try {
+          const activeDriverSessions = await prisma.liveSession.findMany({
+            where: { currentDriverId: userId, status: 'RUNNING' },
+            select: { id: true, workspaceId: true }
+          });
+          for (const s of activeDriverSessions) {
+            await pauseForDisconnect(s.id, userId);
+            io.to(`session:${s.id}`).emit('session.paused', {
+              sessionId: s.id,
+              reason: 'DRIVER_DISCONNECTED'
+            });
+            const updated = await getSession(s.workspaceId, s.id, userId).catch(() => null);
+            if (updated) {
+              io.to(`session:${s.id}`).emit('session.event', updated.events[updated.events.length - 1]);
+            }
+          }
+        } catch {
+          // Ignore error during disconnect pause cleanup
+        }
       }
     });
   });

@@ -9,6 +9,8 @@ import { EnterWorkspace } from './pages/EnterWorkspace';
 import { InviteRedirect } from './pages/InviteRedirect';
 import { Onboarding } from './pages/Onboarding';
 import { DriveCallback } from './pages/DriveCallback';
+import { JiraCallback } from './pages/JiraCallback';
+import { SlackCallback } from './pages/SlackCallback';
 import { WorkspaceShell } from './components/WorkspaceShell';
 
 // Workspace views
@@ -23,6 +25,9 @@ import { Activity } from './pages/workspace/Activity';
 import { Security } from './pages/workspace/Security';
 import { Settings } from './pages/workspace/Settings';
 import { Archives } from './pages/workspace/Archives';
+import { LiveWork } from './pages/workspace/LiveWork';
+import { Session } from './pages/workspace/Session';
+import { Corrections } from './pages/workspace/Corrections';
 
 export default function App() {
   return (
@@ -38,12 +43,17 @@ export default function App() {
             <Route path="/enter" element={<EnterWorkspace />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/w/drive/callback" element={<DriveCallback />} />
+            <Route path="/w/jira/callback" element={<JiraCallback />} />
+            <Route path="/w/slack/callback" element={<SlackCallback />} />
 
             {/* Living Knowledge Workspace Shell & Surfaces */}
             <Route path="/w/:workspaceId" element={<WorkspaceShell />}>
               <Route index element={<Home />} />
               <Route path="home" element={<Home />} />
               <Route path="ask" element={<Ask />} />
+              <Route path="live" element={<LiveWork />} />
+              <Route path="sessions/:sessionId" element={<Session />} />
+              <Route path="corrections" element={<Corrections />} />
               <Route path="brain" element={<CompanyBrain />} />
               <Route path="work" element={<Work />} />
               <Route path="agents" element={<Agents />} />

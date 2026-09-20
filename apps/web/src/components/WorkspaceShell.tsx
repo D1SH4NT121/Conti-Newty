@@ -8,7 +8,9 @@ import { getSocket } from '../lib/socket';
 const NAV_ITEMS: { label: string; path: string; icon: string }[] = [
   { label: 'Home', path: 'home', icon: '\u2302' },
   { label: 'Ask', path: 'ask', icon: '?' },
+  { label: 'Live Work', path: 'live', icon: '⚡' },
   { label: 'Work', path: 'work', icon: '\u25EB' },
+  { label: 'Corrections', path: 'corrections', icon: '✓' },
   { label: 'Company Brain', path: 'brain', icon: '\u25C9' },
   { label: 'Agents', path: 'agents', icon: '\u2B21' },
   { label: 'Software', path: 'software', icon: '\u2699' },
@@ -22,6 +24,8 @@ const ADMIN_ITEMS: { label: string; path: string; icon: string }[] = [
 ];
 
 const QUICK_ACCESS: { label: string; path: string }[] = [
+  { label: 'Live Work', path: 'live' },
+  { label: 'Corrections', path: 'corrections' },
   { label: 'Company Brain', path: 'brain' },
   { label: 'Active Work', path: 'work' },
   { label: 'Agents', path: 'agents' },
@@ -493,11 +497,12 @@ export const WorkspaceShell: React.FC = () => {
 
         <div className="md:hidden border-t border-border bg-background flex shrink-0">
           {[
+            { path: 'live', label: 'LIVE' },
             { path: 'brain', label: 'BRAIN' },
             { path: 'work', label: 'WORK' },
+            { path: 'corrections', label: 'SKILLS' },
             { path: 'ask', label: 'ASK' },
             { path: 'agents', label: 'AGENTS' },
-            { path: 'activity', label: 'ACTIVITY' },
           ].map((item) => (
             <Link
               key={item.path}

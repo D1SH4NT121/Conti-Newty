@@ -6,7 +6,7 @@ export class GeminiProvider implements LLMProvider {
   private apiKey?: string;
 
   constructor(apiKey?: string) {
-    this.apiKey = apiKey && apiKey !== 'your_gemini_api_key_here' && apiKey !== 'test-key' ? apiKey : undefined;
+    this.apiKey = apiKey && apiKey !== 'your_gemini_api_key_here' && apiKey !== 'test-key' && !apiKey.startsWith('AQ.') ? apiKey : undefined;
   }
 
   public async complete(params: {
@@ -37,12 +37,13 @@ export class GeminiProvider implements LLMProvider {
         bodyPayload.tools = [{ functionDeclarations }];
       }
 
-      const modelId = params.model || 'gemini-1.5-flash';
+      const modelId = params.model || process.env.GEMINI_MODEL_ID || 'gemini-3-flash-preview';
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${this.apiKey}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyPayload)
+        body: JSON.stringify(bodyPayload),
+        signal: AbortSignal.timeout(5000)
       });
 
       if (response.ok) {
@@ -72,6 +73,15 @@ export class GeminiProvider implements LLMProvider {
           stopReason: candidate?.finishReason || 'end_turn',
           provider: this.name
         };
+      } else {
+        let errMessage = response.statusText;
+        try {
+          const errData = await response.json();
+          if (errData?.error?.message) errMessage = errData.error.message;
+        } catch {
+          // Fall back to statusText if error body cannot be parsed as JSON
+        }
+        throw new Error(`[${this.name}] ${errMessage}`);
       }
     }
 

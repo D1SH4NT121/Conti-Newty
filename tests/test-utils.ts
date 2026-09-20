@@ -19,6 +19,9 @@ export async function clearDatabase() {
   await prisma.appWorkspace.deleteMany({});
   await prisma.usageLog.deleteMany({});
   await prisma.auditLog.deleteMany({});
+  await prisma.knowledgeCandidate.deleteMany({}); // Phase 3
+  await prisma.ingestedItem.deleteMany({});       // Phase 2
+  await prisma.connectorOptIn.deleteMany({});      // Phase 2
   await prisma.connectorSync.deleteMany({});
   await prisma.sourceConnection.deleteMany({});
   await prisma.jiraConnection.deleteMany({});
@@ -32,3 +35,4 @@ export async function clearDatabase() {
   await prisma.user.deleteMany({});
   await prisma.organization.deleteMany({});
 }
+

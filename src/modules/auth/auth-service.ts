@@ -33,7 +33,7 @@ export class AuthService {
     return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(originalHash, 'hex'));
   }
 
-  public generateToken(payload: TokenPayload, expiresInSeconds: number = 86400): string {
+  public generateToken(payload: TokenPayload, expiresInSeconds = 86400): string {
     const now = Math.floor(Date.now() / 1000);
     const fullPayload: TokenPayload = {
       ...payload,

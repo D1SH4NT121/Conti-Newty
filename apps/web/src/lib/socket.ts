@@ -26,6 +26,57 @@ export function leaveTaskRoom(taskId: string, workspaceId: string) {
   getSocket().emit('task.leave', { taskId, workspaceId });
 }
 
+export function joinSessionRoom(workspaceId: string, sessionId: string) {
+  getSocket().emit('session.join', { workspaceId, sessionId });
+}
+
+export function leaveSessionRoom(sessionId: string) {
+  getSocket().emit('session.leave', { sessionId });
+}
+
+export function requestDriverControl(workspaceId: string, sessionId: string) {
+  getSocket().emit('session.request_driver', { workspaceId, sessionId });
+}
+export const requestDriver = requestDriverControl;
+
+export function approveDriverControl(workspaceId: string, sessionId: string, driverId: string) {
+  getSocket().emit('session.approve_driver', { workspaceId, sessionId, driverId });
+}
+export const approveDriver = approveDriverControl;
+
+export function handoffDriverControl(workspaceId: string, sessionId: string, nextDriverId: string) {
+  getSocket().emit('session.handoff', { workspaceId, sessionId, nextDriverId });
+}
+export const handoffDriver = handoffDriverControl;
+
+export function emitSessionRedirect(workspaceId: string, sessionId: string, instruction: string, evidence?: string, force?: boolean) {
+  getSocket().emit('session.redirect', { workspaceId, sessionId, instruction, evidence, force });
+}
+
+export function onSessionEvent(callback: (event: any) => void): () => void {
+  const socket = getSocket();
+  socket.on('session.event', callback);
+  return () => {
+    socket.off('session.event', callback);
+  };
+}
+
+export function onDriverChanged(callback: (data: any) => void): () => void {
+  const socket = getSocket();
+  socket.on('session.driver_changed', callback);
+  return () => {
+    socket.off('session.driver_changed', callback);
+  };
+}
+
+export function onParticipantChanged(callback: (data: any) => void): () => void {
+  const socket = getSocket();
+  socket.on('session.participant_changed', callback);
+  return () => {
+    socket.off('session.participant_changed', callback);
+  };
+}
+
 export function disconnectSocket() {
   if (socketInstance) {
     socketInstance.disconnect();

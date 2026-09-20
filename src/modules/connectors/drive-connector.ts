@@ -153,7 +153,7 @@ async function fetchFileContent(meta: DriveFileMeta, accessToken: string): Promi
 /** Safe Brain path derived from file name */
 function toBrainPath(fileName: string, targetDir: string): string {
   const slug = fileName
-    .replace(/[^\w\s\-\.]/g, '')
+    .replace(/[^\w\s.-]/g, '')
     .replace(/\s+/g, '-')
     .toLowerCase();
   // Ensure .md extension for Google Docs; keep original extension otherwise
@@ -172,7 +172,7 @@ async function fetchWithRefresh(
   encryptedRefreshToken: string | null,
   fn: FetchFn
 ): Promise<{ response: Response; newAccessTokenEnc?: string }> {
-  let accessToken = CredentialVault.decrypt(encryptedAccessToken);
+  const accessToken = CredentialVault.decrypt(encryptedAccessToken);
   let response = await fn(accessToken);
 
   if (response.status === 401 && encryptedRefreshToken) {

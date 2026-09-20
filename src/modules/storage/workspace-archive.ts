@@ -37,7 +37,7 @@ export class WorkspaceArchiveManager {
     const workspaceRoot = this.storage.getWorkspaceRoot();
 
     if (fs.existsSync(workspaceRoot)) {
-      const addFilesRecursively = (currentDir: string, relativePrefix: string = '') => {
+      const addFilesRecursively = (currentDir: string, relativePrefix = '') => {
         const entries = fs.readdirSync(currentDir, { withFileTypes: true });
         for (const entry of entries) {
           const fullPath = path.join(currentDir, entry.name);

@@ -1,5 +1,7 @@
-import { ParticipantRole, Prisma, SessionStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../db/client';
+import { ParticipantRole, SessionStatus } from './session-types';
+export { ParticipantRole, SessionStatus } from './session-types';
 import { AgentConfig } from '../brain/agent-runner';
 import {
   appendSessionEvent,
@@ -80,7 +82,9 @@ async function requireParticipant(sessionId: string, userId: string, client: DbC
 async function requireSessionAccess(workspaceId: string, sessionId: string, userId: string, client: DbClient = prisma) {
   const membership = await requireWorkspaceMember(workspaceId, userId, client);
   const session = await requireSession(workspaceId, sessionId, client);
-  await requireParticipant(sessionId, userId, client);
+  if (roleWeight(membership.role) < roleWeight('admin')) {
+    await requireParticipant(sessionId, userId, client);
+  }
   return { membership, session };
 }
 
@@ -92,11 +96,35 @@ async function loadSessionDto(workspaceId: string, sessionId: string, userId: st
   ]);
   return {
     ...session,
+    status: session.status as SessionStatus,
     workspaceRole: membership.role,
-    participants,
+    participants: participants.map((p) => ({ ...p, role: p.role as ParticipantRole })),
     events: events.map(mapSessionEvent)
   };
 }
+
+async function recordSessionAudit(
+  workspaceId: string,
+  userId: string | null,
+  action: string,
+  details: Record<string, any>,
+  client: DbClient = prisma
+) {
+  try {
+    await client.auditLog.create({
+      data: {
+        action,
+        userId: userId || undefined,
+        workspaceId,
+        details: JSON.stringify(details)
+      }
+    });
+  } catch {
+    // Non-blocking audit record
+  }
+}
+
+export { recordSessionAudit };
 
 export async function createSession(input: CreateSessionInput): Promise<LiveSessionDto> {
   const membership = await requireWorkspaceMember(input.workspaceId, input.userId);
@@ -120,6 +148,7 @@ export async function createSession(input: CreateSessionInput): Promise<LiveSess
       actorId: input.userId,
       payload: { title: input.title, goal: input.goal, agents: input.agents || [] }
     }, tx);
+    await recordSessionAudit(input.workspaceId, input.userId, 'SESSION_CREATED', { sessionId: session.id, title: input.title }, tx);
     return loadSessionDto(input.workspaceId, session.id, input.userId, tx);
   }).then((session) => ({ ...session, workspaceRole: membership.role }));
 }
@@ -139,7 +168,7 @@ export async function joinSession(workspaceId: string, sessionId: string, userId
     if (!existing || existing.status !== 'CONNECTED') {
       await appendSessionEvent({ sessionId, type: SessionEventType.PARTICIPANT_JOINED, actorId: userId, payload: { role: participant.role, reconnected: Boolean(existing) } }, tx);
     }
-    return participant;
+    return { ...participant, role: participant.role as ParticipantRole };
   });
 }
 
@@ -166,6 +195,7 @@ export async function approveDriverRequest(workspaceId: string, sessionId: strin
     if (!request) throw new Error('No pending Driver request found');
     await transferDriver(tx, sessionId, requesterId, driverId);
     await appendSessionEvent({ sessionId, type: SessionEventType.DRIVER_APPROVED, actorId: requesterId, payload: { driverId } }, tx);
+    await recordSessionAudit(workspaceId, requesterId, 'DRIVER_HANDOFF_APPROVED', { sessionId, newDriverId: driverId }, tx);
   });
 }
 
@@ -178,6 +208,7 @@ export async function handoffDriver(workspaceId: string, sessionId: string, driv
     if (next.role !== ParticipantRole.OBSERVER) throw new Error('Control can only be handed off to an Observer');
     await transferDriver(tx, sessionId, driverId, nextDriverId);
     await appendSessionEvent({ sessionId, type: SessionEventType.DRIVER_HANDOFF, actorId: driverId, payload: { fromDriverId: driverId, toDriverId: nextDriverId } }, tx);
+    await recordSessionAudit(workspaceId, driverId, 'DRIVER_HANDOFF_COMPLETED', { sessionId, fromDriverId: driverId, toDriverId: nextDriverId }, tx);
   });
 }
 
@@ -200,6 +231,7 @@ export async function pauseForDisconnect(sessionId: string, driverId: string): P
     await tx.liveSession.update({ where: { id: sessionId }, data: { status: 'PAUSED' } });
     await appendSessionEvent({ sessionId, type: SessionEventType.DRIVER_DISCONNECTED, actorId: driverId, payload: { driverId } }, tx);
     await appendSessionEvent({ sessionId, type: SessionEventType.SESSION_PAUSED, actorId: driverId, payload: { reason: 'DRIVER_DISCONNECTED' } }, tx);
+    await recordSessionAudit(session.workspaceId, driverId, 'SESSION_PAUSED', { sessionId, reason: 'DRIVER_DISCONNECTED' }, tx);
   });
 }
 

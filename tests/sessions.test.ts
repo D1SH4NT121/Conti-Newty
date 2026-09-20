@@ -1,4 +1,4 @@
-import { ParticipantRole } from '@prisma/client';
+import { ParticipantRole } from '../src/modules/sessions/session-types';
 import { prisma } from '../src/db/client';
 import {
   appendSessionEvent,
@@ -40,12 +40,13 @@ describe('session lifecycle service', () => {
     const otherWorkspace = await prisma.workspace.create({ data: { name: 'Other Workspace', organizationId: otherOrg.id } });
     workspaceId = workspace.id;
     otherWorkspaceId = otherWorkspace.id;
-    await prisma.workspaceMember.createMany({ data: [
-      { workspaceId, userId: creatorId, role: 'MEMBER' },
-      { workspaceId, userId: observerId, role: 'MEMBER' },
-      { workspaceId, userId: adminId, role: 'ADMIN' },
-      { workspaceId: otherWorkspaceId, userId: outsiderId, role: 'MEMBER' }
-    ] });  });
+    await Promise.all([
+      prisma.workspaceMember.create({ data: { workspaceId, userId: creatorId, role: 'MEMBER' } }),
+      prisma.workspaceMember.create({ data: { workspaceId, userId: observerId, role: 'MEMBER' } }),
+      prisma.workspaceMember.create({ data: { workspaceId, userId: adminId, role: 'ADMIN' } }),
+      prisma.workspaceMember.create({ data: { workspaceId: otherWorkspaceId, userId: outsiderId, role: 'MEMBER' } })
+    ]);
+  });
 
   afterEach(async () => {
     await clearDatabase();

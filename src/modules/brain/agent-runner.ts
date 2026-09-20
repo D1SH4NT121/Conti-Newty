@@ -22,7 +22,7 @@ export interface AgentConfig {
    * Explicit model override for this relay step.
    * If omitted, the runner auto-assigns: cheap model for intermediate steps,
    * strong model for the final step.
-   * Pass a full model ID string (e.g. "gpt-4o-mini", "claude-3-haiku-20240307").
+   * Pass a full model ID string (e.g. "gpt-4o-mini", "claude-haiku-4-5-20251001").
    */
   model?: string;
 }
@@ -79,7 +79,7 @@ export class AgentRunner {
   private async gatherContext(userId: string, workspaceId: string, taskId: string, sourceTracker: SourceTracker): Promise<string> {
     const toolCtx = { userId, workspaceId, storage: this.storage, taskId, sourceTracker };
 
-    let contextBlocks: string[] = [];
+    const contextBlocks: string[] = [];
     const collectDirectory = async (relativePath: string): Promise<void> => {
       const dirResult = await this.brainTools.execute({
         toolName: 'list_directory',
@@ -116,7 +116,11 @@ export class AgentRunner {
     await prisma.agentTask.update({ where: { id: taskId }, data: { status: 'RUNNING' } });
 
     const recordEvent = async (type: string, payload: any) => {
-      try { await prisma.agentEvent.create({ data: { agentTaskId: taskId, type, payload: JSON.stringify(payload) } }); } catch {}
+      try {
+        await prisma.agentEvent.create({ data: { agentTaskId: taskId, type, payload: JSON.stringify(payload) } });
+      } catch {
+        // Ignore event recording failure
+      }
       if (onEvent) onEvent({ type, payload });
       this.broadcastTaskEvent(workspaceId, taskId, type, payload);
     };
@@ -130,7 +134,7 @@ export class AgentRunner {
       await recordEvent('TOOL_EXECUTED', { toolName: 'list_directory', result: { success: true } });
 
       const turns: AgentTurn[] = [];
-      let conversationHistory: AIMessage[] = [];
+      const conversationHistory: AIMessage[] = [];
 
       for (let i = 0; i < agents.length; i++) {
         const agentCfg = agents[i];

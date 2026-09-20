@@ -21,6 +21,10 @@ describe('Pillar 1.3: Real Provider Contract Parity & Simulation Guard', () => {
   it('1. Rejects unconfigured provider calls with explicit error when simulation is not permitted', async () => {
     // Explicitly disable simulation
     process.env.ALLOW_AI_SIMULATION = 'false';
+    const origAwsKey = process.env.AWS_ACCESS_KEY_ID;
+    const origAwsRegion = process.env.AWS_REGION;
+    delete process.env.AWS_ACCESS_KEY_ID;
+    delete process.env.AWS_REGION;
 
     const claude = new ClaudeProvider();
     const openai = new OpenAIProvider();
@@ -42,6 +46,9 @@ describe('Pillar 1.3: Real Provider Contract Parity & Simulation Guard', () => {
     await expect(
       bedrock.complete({ messages: [{ role: 'user', content: 'hello' }] })
     ).rejects.toThrow(/Unconfigured provider: Valid API key is required/);
+
+    if (origAwsKey) process.env.AWS_ACCESS_KEY_ID = origAwsKey;
+    if (origAwsRegion) process.env.AWS_REGION = origAwsRegion;
   });
 
   it('2. Rejects simulation mode if NODE_ENV is production even if ALLOW_AI_SIMULATION is true', async () => {

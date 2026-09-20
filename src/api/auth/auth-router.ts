@@ -179,9 +179,14 @@ export function createAuthRouter(): Router {
           data: {
             email: demoEmail,
             name: 'Hackathon Demo Guest',
-            role: 'DEMO',
+            role: 'PUBLIC',
             organizationId: org.id
           }
+        });
+      } else if (user.role !== 'PUBLIC') {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { role: 'PUBLIC' }
         });
       }
 

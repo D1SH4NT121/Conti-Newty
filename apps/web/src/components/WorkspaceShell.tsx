@@ -319,9 +319,11 @@ export const WorkspaceShell: React.FC = () => {
             )}
           </Link>
         ))}
-        <div className="pt-4 px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-muted-foreground font-bold">
-          Management
-        </div>
+        {user?.role !== 'PUBLIC' && (
+          <div className="pt-4 px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-muted-foreground font-bold">
+            Management
+          </div>
+        )}
         {user?.role !== 'PUBLIC' && ADMIN_ITEMS.map((item) => (
           <Link
             key={item.path}
